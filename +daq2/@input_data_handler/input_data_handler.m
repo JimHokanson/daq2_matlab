@@ -18,7 +18,7 @@ classdef input_data_handler < handle
         
         %Objects for processing acquired data
         decimation_handler
-        acquired_data
+        acquired_data    %daq2.input.acquired_data
         data_writer
         read_cb
     end
@@ -52,11 +52,37 @@ classdef input_data_handler < handle
             %TODO: Do we want to save any daq properties?????
             %=> perhaps convert the chan settings to a struct and save???
         end
-        function abort(obj)
+        function addNonDaqData(obj,name,data)
+            if isempty(obj.acquired_data)
+                obj.cmd_window.logErrorMessage('Unable to add non-daq data when not recording')
+                return
+            end
+            error('Not yet implemented')
+        end
+        function addNonDaqXYData(obj,name,y_data,x_data)
+            if isempty(obj.acquired_data)
+                obj.cmd_window.logErrorMessage('Unable to add non-daq xy data when not recording')
+                return
+            end
+            obj.acquired_data.addNonDaqXYData(name,y_data,x_data);
             
+            %This would be better as a 2 column variable ...
+            %- need to update data writer ...
+            obj.data_writer.addSamples(sprintf('%s__x',name),x_data);
+            obj.data_writer.addSamples(sprintf('%s__y',name),y_data);
+        end
+        function abort(obj)
+            %???? Do we want to close the plotting figure?????
+            %
+            %TODO: Do we want to write anything????
+            obj.acquired_data = [];
+            obj.data_writer = [];
         end
         function stop(obj)
-            
+            %%???? Do we want to close the plotting figure?????
+            %
+            obj.acquired_data = [];
+            obj.data_writer = [];
         end
         function readDataCallback(obj,source,event)
             %

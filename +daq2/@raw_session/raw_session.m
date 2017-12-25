@@ -1,5 +1,6 @@
 classdef raw_session < handle
     %
+    %   Class:
     %   daq2.raw_session
     
     properties (Hidden)

@@ -2,6 +2,17 @@ classdef acquired_data < handle
     %
     %   Class:
     %   daq2.input.acquired_data
+    %
+    %   The current design holds all acquired data in memory (although it 
+    %   is also saved to disk as it is collected - elsewhere).
+    %
+    %   This class holds classes which have the data. It does not contain
+    %   the raw data itself.
+    %
+    %   See Also
+    %   --------
+    %   daq2.input_data_handler
+    %   daq2.input.data_writer
     
     properties
         raw_session
@@ -14,7 +25,9 @@ classdef acquired_data < handle
         daq_entries_array %array of objects
         
         n_chans
-        non_daq_entries
+        non_daq_entries %fields of type ... NYI
+        non_daq_xy_entries %fields of type
+        %daq2.data.non_daq_streaming_xy
         ip
     end
     properties (Hidden)
@@ -50,7 +63,10 @@ classdef acquired_data < handle
             ai_chans = raw_session.getAnalogInputChans();
             
             obj.daq_entries = struct;
-            obj.non_daq_entries = struct;
+            obj.non_daq_entries= struct;
+            obj.non_daq_xy_entries = struct;
+            
+            %TODO: Add on daq__ to avoid any name conflicts ...
             
             short_names = {ai_chans.short_name};
             disp_names = {ai_chans.name};
@@ -73,13 +89,13 @@ classdef acquired_data < handle
         end
     end
     methods
-        function ip = plotData(obj,varargin)
+        function ip = plotDAQData(obj,varargin)
             %
             %   TODO: This is a work in progress ...
             %
             %
             
-            %JAH: Not yet transferred
+            %JAH: Not yet rewritten for DAQ2
             
             %Default plot width ??????
             in.width_s = 10;
@@ -103,11 +119,31 @@ classdef acquired_data < handle
             
             ip = obj.ip;
         end
-        function rec_data_entry = initNonDaqEntry(obj,name,fs,n_seconds_init)
-            %
-            %   For now non-DAQ entries will use the old class
-            rec_data_entry = aua17.data.recorded_data_entry(name,fs,n_seconds_init);
-            obj.non_daq_entries.(name) = rec_data_entry;
+%         function rec_data_entry = initNonDaqEntry(obj,name,fs,n_seconds_init)
+%             %
+%             %   For now non-DAQ entries will use the old class
+%             rec_data_entry = aua17.data.recorded_data_entry(name,fs,n_seconds_init);
+%             obj.non_daq_entries.(name) = rec_data_entry;
+%         end
+        function addNonDaqData(obj,name,data)
+            
+        end
+        function initNonDaqXYData(obj,name,varargin)
+            %We can initialize on adding, we just don't get as much control
+           error('Not yet implemented')
+        end
+        function addNonDaqXYData(obj,name,y_data,x_data)
+            %non_daq_xy_map
+            
+            if isfield(obj.non_daq_xy_entries,name)
+               xy_obj = obj.non_daq_xy_entries.(name);
+            else
+               xy_obj = daq2.data.non_daq_streaming_xy(name);
+               obj.non_daq_xy_entries.(name) = xy_obj;
+            end
+            
+            xy_obj.addSamples(y_data,x_data);
+            
         end
         function addDAQData(obj,new_data)
             %

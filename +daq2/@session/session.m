@@ -8,7 +8,7 @@ classdef session < handle
     end
     
     properties
-        raw_session
+        raw_session     %daq2.raw_session
         perf_monitor
         input_data_handler
         output_data_handler
@@ -21,6 +21,16 @@ classdef session < handle
         %Interface:
         %logMessage(string,formatting_varargin)
         %logError(string,formmatting_varargin)
+    end
+    
+    properties (Dependent)
+        is_running 
+    end
+    
+    methods
+        function value = get.is_running(obj)
+           value = obj.raw_session.is_running;
+        end
     end
     
     methods
@@ -68,6 +78,22 @@ classdef session < handle
             %- Reading in input_data_handler
             h.addlistener('ErrorOccurred',@obj.errorHandlerCallback);
         end
+    end
+    
+    %Setup Methods  =======================================================
+    methods
+        function addChannelsBySpec(obj,chan_specs)
+            obj.raw_session.addChannelsBySpec(chan_specs);
+        end
+    end
+    %Methods while running ================================================
+    methods
+        function addNonDaqData(obj,name,data)
+            obj.input_data_handler.addNonDaqData(name,data);
+        end
+        function addNonDaqXYData(obj,name,y_data,x_data)
+            obj.input_data_handler.addNonDaqXYData(name,y_data,x_data);
+        end
         function queueOutputData(obj,data)
             %??? - how do we distinguish between analog and digital?
             
@@ -80,6 +106,16 @@ classdef session < handle
             end
             obj.raw_session.queueOutputData(data);
         end
+        function errorHandlerCallback(obj,source,event)
+            obj.abort();
+            %TODO: Do we want to add data to any file???
+            %=> if so, handle in input_data_handler.abort ....
+            obj.cmd_window.logErrorMessage(event.Error.message);
+        end
+    end
+    
+    %Control Methods ======================================================
+    methods
         function startBackground(obj,varargin)
             
             in.trial_id = [];
@@ -99,15 +135,8 @@ classdef session < handle
         function abort(obj)
             obj.raw_session.stop();
             obj.output_data_handler.stop();
+            %Note that we are aborting, not just stopping
             obj.input_data_handler.abort();
-        end
-        function addChannelsBySpec(obj,chan_specs)
-            obj.raw_session.addChannelsBySpec(chan_specs);
-        end
-        function errorHandlerCallback(obj,source,event)
-            obj.abort();
-            %TODO: Do we want to add data to any file ... 
-            obj.cmd_window.logError(event.Error.message);
         end
     end
 end

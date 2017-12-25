@@ -113,6 +113,8 @@ classdef data_writer < handle
             
             ai_chans = raw_session.getAnalogInputChans();
             obj.daq_chan_names = {ai_chans.short_name};
+            %Add DAQ prefix to reduce name conflicts ...
+            obj.daq_chan_names = cellfun(@(x) ['daq__' x],obj.daq_chan_names,'un',0);
             obj.n_chans = length(obj.daq_chan_names);
             obj.samples_written = zeros(1,obj.n_chans);
             

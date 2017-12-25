@@ -48,7 +48,7 @@ classdef command_window < handle
             WARNING_TYPE = 3;
             h__addMsg(obj,msg2,WARNING_TYPE)
         end
-        function logError(obj,msg,varargin)
+        function logErrorMessage(obj,msg,varargin)
             if ~isempty(varargin)
                 msg = sprintf(msg,varargin{:});
             end
