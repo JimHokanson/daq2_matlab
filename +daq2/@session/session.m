@@ -16,21 +16,27 @@ classdef session < handle
         recorded_data
         
         %TODO: Provide example in this package
-        cmd_window
+        cmd_window  %Default: daq2.command_window
         %
         %Interface:
         %logMessage(string,formatting_varargin)
         %logError(string,formmatting_varargin)
+        iplot
     end
     
     properties (Dependent)
         is_running 
+        rate
     end
     
     methods
+        function value = get.rate(obj)
+           value = obj.raw_session.rate; 
+        end
         function value = get.is_running(obj)
            value = obj.raw_session.is_running;
         end
+        
     end
     
     methods
@@ -88,10 +94,31 @@ classdef session < handle
     end
     %Methods while running ================================================
     methods
+        function iplot = plotDAQData(obj,varargin)
+            iplot = obj.input_data_handler.plotDAQData(varargin{:});
+            obj.iplot = obj.iplot;
+        end
+        function xy_data = getXYData(obj,name)
+            xy_data = obj.input_data_handler.getXYData(name);
+        end
+        function saveData(obj,name,data)
+            obj.input_data_handler.saveData(name,data);
+        end
         function addNonDaqData(obj,name,data)
+            %
+            %   Does 2 things:
+            %   1) Saves the data to disk
+            %   2) Keeps it in memory for later use and retrieval
+            
+            error('not yet implemented')
+            
             obj.input_data_handler.addNonDaqData(name,data);
         end
         function addNonDaqXYData(obj,name,y_data,x_data)
+            %
+            %   Does 2 things:
+            %   1) Saves the data to disk
+            %   2) Keeps it in memory for later use and retrieval
             obj.input_data_handler.addNonDaqXYData(name,y_data,x_data);
         end
         function queueOutputData(obj,data)
@@ -106,8 +133,12 @@ classdef session < handle
             end
             obj.raw_session.queueOutputData(data);
         end
+    end
+    
+    methods
         function errorHandlerCallback(obj,source,event)
-            obj.abort();
+            ME = event.Error;
+            obj.abort(ME);
             %TODO: Do we want to add data to any file???
             %=> if so, handle in input_data_handler.abort ....
             obj.cmd_window.logErrorMessage(event.Error.message);
@@ -132,11 +163,12 @@ classdef session < handle
             obj.output_data_handler.stop();
             obj.input_data_handler.stop();
         end
-        function abort(obj)
+        function abort(obj,ME)
+            obj.cmd_window.logErrorMessage(ME.message);
             obj.raw_session.stop();
             obj.output_data_handler.stop();
             %Note that we are aborting, not just stopping
-            obj.input_data_handler.abort();
+            obj.input_data_handler.abort(ME);
         end
     end
 end

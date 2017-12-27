@@ -30,10 +30,15 @@ classdef acquired_data < handle
         %daq2.data.non_daq_streaming_xy
         ip
     end
-    properties (Hidden)
-        %Not sure if cell array access is faster than struct?
-        %Could make an object array
-        %entries_array
+    
+    properties (Dependent)
+        daq_tmax
+    end
+    
+    methods
+        function value = get.daq_tmax(obj)
+            value = obj.daq_entries_array(1).t_max;
+        end
     end
     
     methods
@@ -89,7 +94,7 @@ classdef acquired_data < handle
         end
     end
     methods
-        function ip = plotDAQData(obj,varargin)
+        function iplot = plotDAQData(obj,varargin)
             %
             %   TODO: This is a work in progress ...
             %
@@ -97,27 +102,29 @@ classdef acquired_data < handle
             
             %JAH: Not yet rewritten for DAQ2
             
-            %Default plot width ??????
-            in.width_s = 10;
-            in = sl.in.processVarargin(in,varargin);
+% %             %Default plot width ??????
+% %             in.width_s = 10;
+% %             in = sl.in.processVarargin(in,varargin);
             
             f = figure;
             set(f,'Position',[1 1 1200 800]);
             ax = cell(obj.n_chans,1);
             for i = 1:obj.n_chans
                 ax{i} = subplot(obj.n_chans,1,i);
-                plotBig(obj.entries_array(i));
+                plotBig(obj.daq_entries_array(i));
             end
             
-            %This relies on structs keeping fields ordered so that the
-            %names are in the correct order
+            %This relies on fieldnames (structs) keeping fields ordered so 
+            %that the names are in the correct order
             
-            names = fieldnames(obj.entries);
+            names = fieldnames(obj.daq_entries);
             names = regexprep(names,'_','\n');
-            obj.ip = interactive_plot(f,ax,'streaming',true,...
-                'axes_names',names);
+            iplot = interactive_plot(f,ax,...
+                'streaming',true,...
+                'axes_names',names,...
+                'comments',true);
             
-            ip = obj.ip;
+            
         end
 %         function rec_data_entry = initNonDaqEntry(obj,name,fs,n_seconds_init)
 %             %
@@ -125,6 +132,13 @@ classdef acquired_data < handle
 %             rec_data_entry = aua17.data.recorded_data_entry(name,fs,n_seconds_init);
 %             obj.non_daq_entries.(name) = rec_data_entry;
 %         end
+        function xy_obj = getXYData(obj,name)
+            if isfield(obj.non_daq_xy_entries,name)
+               xy_obj = obj.non_daq_xy_entries.(name);
+            else
+               xy_obj = [];
+            end
+        end
         function addNonDaqData(obj,name,data)
             
         end
@@ -156,9 +170,6 @@ classdef acquired_data < handle
             
             for i = 1:obj.n_chans
                 obj.daq_entries_array(i).addData(new_data{i});
-            end
-            if ~isempty(obj.ip)
-                obj.ip.dataAdded(obj.daq_entries_array(1).t_max);
             end
         end
         function out = getChannel(obj,name)

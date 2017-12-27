@@ -127,13 +127,11 @@ classdef data_writer < handle
         function resolveBasePath(obj)
             
             obj.base_save_path = obj.options.base_save_path;
-            if ~isempty(obj.base_save_path)
-                return
+            if isempty(obj.base_save_path)
+                temp = sl.stack.getPackageRoot();
+                id = datestr(now,'yymmdd');
+                obj.base_save_path = fullfile(temp,'data',id);
             end
-            
-            temp = sl.stack.getPackageRoot();
-            id = datestr(now,'yymmdd');
-            obj.base_save_path = fullfile(temp,'data',id);
             sl.dir.createFolderIfNoExist(obj.base_save_path);
         end
         function file_path = getFilePath(obj,trial_id,prefix,suffix)
@@ -168,14 +166,14 @@ classdef data_writer < handle
             file_path = fullfile(obj.base_save_path,file_name);
             
         end
-        function closerWriterWithError(obj,error_id,ME)
+        function closerWriterWithError(obj,ME)
             %NYI
             %error sources:
             %- DAQ
             %- others???
             %error_id - negative
-            obj.addSamples('trial_status',error_id);
-            %TODO: Log error
+            obj.saveData('error_value',ME);
+            obj.addSamples('trial_status',0);
             h__send(obj,[]);
         end
         function closeWriter(obj)
@@ -236,7 +234,7 @@ classdef data_writer < handle
             obj.samples_written = n_written;
             
         end
-        function saveStruct(obj,name,data)
+        function saveData(obj,name,data)
             %For saving the plotting data
             %=> comments, settings, etc
             %

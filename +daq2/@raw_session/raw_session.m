@@ -132,14 +132,6 @@ classdef raw_session < handle
             obj.h.NotifyWhenScansQueuedBelow = value;
         end
         
-        
-        
-        
-        
-        
-        
-        
-        
         %Status ==================================
         function value = get.is_running(obj)
             value = obj.h.IsRunning;
@@ -185,6 +177,12 @@ classdef raw_session < handle
             obj.h.stop();
         end
         function queueOutputData(obj,data)
+            %
+            %   This may fail if no outputs have been declared
+            %
+            %   Ideally we would print out the channels if this fails in
+            %   that way:
+            %       'daq:Session:noOutputChannels'
             obj.h.queueOutputData(data);
         end
         function addChannelsBySpec(obj,chan_specs)

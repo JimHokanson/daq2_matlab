@@ -27,6 +27,11 @@ classdef non_daq_streaming_xy < handle
     end
     
     methods
+        function [x,y] = getRawData(obj)
+            n_valid = obj.n_samples_valid;
+            x = obj.x_data(1:n_valid); 
+            y = obj.y_data(1:n_valid);
+        end
         function obj = non_daq_streaming_xy(name)
             %
             %   obj = daq2.data.non_daq_streaming_xy(name)

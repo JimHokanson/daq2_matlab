@@ -3,13 +3,20 @@ classdef input_data_handler < handle
     %   Class:
     %   daq2.input_data_handler
     %
+    %   The input data handler does mainly 2 things:
+    %   1) Saves data to disk
+    %   2) Logs data in memory (for plotting, currently not optional)
+    %
+    %   This functionality is obtained by calling two subclasses:
+    %   1) data_writer   - daq2.input.data_writer 
+    %   2) acquired_data - daq2.input.acquired_data
+    %
     %   See Also
+    %   --------
     %   daq2.output_data_handler
-    
-    events
         
-    end
     
+
     properties
         raw_session
         perf_monitor
@@ -19,8 +26,10 @@ classdef input_data_handler < handle
         %Objects for processing acquired data
         decimation_handler
         acquired_data    %daq2.input.acquired_data
-        data_writer
+        data_writer      %daq2.input.data_writer   
         read_cb
+        iplot
+        iplot_listen
     end
     
     methods
@@ -52,16 +61,57 @@ classdef input_data_handler < handle
             %TODO: Do we want to save any daq properties?????
             %=> perhaps convert the chan settings to a struct and save???
         end
-        function addNonDaqData(obj,name,data)
+        function iplot = plotDAQData(obj,varargin)
             if isempty(obj.acquired_data)
-                obj.cmd_window.logErrorMessage('Unable to add non-daq data when not recording')
+                obj.cmd_window.logErrorMessage(...
+                    'Unable to add non-daq data when not recording')
+                iplot = [];
+                return
+            end
+            iplot = obj.acquired_data.plotDAQData(varargin{:});
+            obj.iplot = iplot;
+            
+            %keyboard
+            
+            obj.iplot_listen = addlistener(iplot.eventz,'session_updated',@obj.sessionUpdated);
+            
+            
+        end
+        function sessionUpdated(obj,source,event_data)  %#ok<INUSD>
+            %real_event_data = event_data.value;
+            %'interactive_plot.eventz.session_updated_event_data'
+            s = obj.iplot.getSessionData;
+            obj.saveData('iplot_session_data',s);
+        end
+        function saveData(obj,name,data)
+            %This logic is not obvious - if ~obj.recording ...
+          	if isempty(obj.acquired_data)
+                obj.cmd_window.logErrorMessage(...
+                    'Unable to add non-daq data when not recording')
+                return
+            end
+            obj.data_writer.saveData(name,data);
+        end
+        function addNonDaqData(obj,name,data) %#ok<INUSD>
+            if isempty(obj.acquired_data)
+                obj.cmd_window.logErrorMessage(...
+                    'Unable to add non-daq data when not recording')
                 return
             end
             error('Not yet implemented')
         end
+        function xy_data = getXYData(obj,name)
+            if isempty(obj.acquired_data)
+                obj.cmd_window.logErrorMessage(...
+                    'Unable to add non-daq xy data when not recording')
+                return
+            end
+            xy_data = obj.acquired_data.getXYData(name);
+        end
         function addNonDaqXYData(obj,name,y_data,x_data)
             if isempty(obj.acquired_data)
-                obj.cmd_window.logErrorMessage('Unable to add non-daq xy data when not recording')
+                obj.cmd_window.logErrorMessage(...
+                    'Unable to add non-daq xy data when not recording')
                 return
             end
             obj.acquired_data.addNonDaqXYData(name,y_data,x_data);
@@ -71,19 +121,26 @@ classdef input_data_handler < handle
             obj.data_writer.addSamples(sprintf('%s__x',name),x_data);
             obj.data_writer.addSamples(sprintf('%s__y',name),y_data);
         end
-        function abort(obj)
+    end
+    methods
+        function abort(obj,ME)
             %???? Do we want to close the plotting figure?????
-            %
-            %TODO: Do we want to write anything????
+            delete(obj.iplot_listen);
+            obj.iplot = [];
+            obj.data_writer.closerWriterWithError(ME);
             obj.acquired_data = [];
             obj.data_writer = [];
         end
         function stop(obj)
             %%???? Do we want to close the plotting figure?????
-            %
+            delete(obj.iplot_listen);
+            obj.iplot = [];
+            obj.data_writer.closeWriter();
             obj.acquired_data = [];
             obj.data_writer = [];
         end
+    end
+    methods
         function readDataCallback(obj,source,event)
             %
             %   source: Matlab daq session
@@ -103,7 +160,12 @@ classdef input_data_handler < handle
             
             decimated_data = obj.decimation_handler.getDecimatedData(input_data);
             
+            obj.acquired_data.addDAQData(decimated_data);
             obj.data_writer.addDAQSamples(decimated_data);
+            
+            if ~isempty(obj.iplot)
+                obj.iplot.dataAdded(obj.acquired_data.daq_tmax);
+            end
             
             if ~isempty(obj.read_cb)
                obj.read_cb(source,event); 

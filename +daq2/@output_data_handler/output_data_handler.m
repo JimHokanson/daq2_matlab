@@ -92,7 +92,6 @@ classdef output_data_handler < handle
                     
                     %TODO: Add in performance logging ...
                     feval(obj.write_cb,obj.raw_session.h,struct);
-                    %disp('I ran')
                 end
             catch ME
                 assignin('base','last_ME_from_timer',ME);
