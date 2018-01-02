@@ -14,6 +14,8 @@ classdef input_data_handler < handle
     %   See Also
     %   --------
     %   daq2.output_data_handler
+    %   daq2.input.data_writer 
+    %   daq2.input.acquired_data
         
     
 

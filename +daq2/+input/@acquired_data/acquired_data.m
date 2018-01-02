@@ -13,6 +13,7 @@ classdef acquired_data < handle
     %   --------
     %   daq2.input_data_handler
     %   daq2.input.data_writer
+    %   big_plot.streaming_data
     
     properties
         raw_session
