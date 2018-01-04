@@ -31,7 +31,10 @@ classdef input_data_handler < handle
         data_writer      %daq2.input.data_writer   
         read_cb
         iplot
-        iplot_listen
+        
+        iplot_listen    %Event listener
+        %Listens for the session to be updated and saves any changes to
+        %disk
     end
     
     methods
@@ -48,6 +51,12 @@ classdef input_data_handler < handle
             
         end
         function initForStart(obj,trial_id,save_prefix,save_suffix)
+            %
+            %   initForStart(obj,trial_id,save_prefix,save_suffix)
+            %
+            %
+            %
+            
             %Initialize
             %- data writing
             %- decimation handling
@@ -86,7 +95,10 @@ classdef input_data_handler < handle
             obj.saveData('iplot_session_data',s);
         end
         function saveData(obj,name,data)
-            %This logic is not obvious - if ~obj.recording ...
+            %
+            %   saveData(obj,name,data)
+            
+            %This logic is not obvious - should be => if ~obj.recording ...
           	if isempty(obj.acquired_data)
                 obj.cmd_window.logErrorMessage(...
                     'Unable to add non-daq data when not recording')

@@ -8,20 +8,18 @@ classdef session < handle
     end
     
     properties
-        raw_session     %daq2.raw_session
-        perf_monitor
-        input_data_handler
-        output_data_handler
+        raw_session             %daq2.raw_session
+        perf_monitor            %
+        input_data_handler      %daq2.input_data_handler
+        output_data_handler     %daq2.output_data_handler
         options
         recorded_data
         
-        %TODO: Provide example in this package
         cmd_window  %Default: daq2.command_window
-        %
         %Interface:
-        %logMessage(string,formatting_varargin)
-        %logError(string,formmatting_varargin)
-        iplot
+        %   logMessage(string,formatting_varargin)
+        %   logError(string,formmatting_varargin)
+        iplot %interactive_plot
     end
     
     properties (Dependent)
@@ -94,9 +92,23 @@ classdef session < handle
     end
     %Methods while running ================================================
     methods
+        function loadCalibrations(obj,file_paths,varargin)
+            if isempty(obj.iplot)
+                obj.cmd_window.logErrorMessage(...
+                    'Unable to load an calibration when no plot is present');
+            end
+            obj.iplot.loadCalibrations(file_paths,varargin)
+        end
         function iplot = plotDAQData(obj,varargin)
+            %
+            %
+            %
+            %   See Also
+            %   --------
+            %      
+            
             iplot = obj.input_data_handler.plotDAQData(varargin{:});
-            obj.iplot = obj.iplot;
+            obj.iplot = iplot;
         end
         function xy_data = getXYData(obj,name)
             xy_data = obj.input_data_handler.getXYData(name);
@@ -159,11 +171,13 @@ classdef session < handle
             obj.raw_session.startBackground();
         end
         function stop(obj)
+            obj.iplot = [];
             obj.raw_session.stop();
             obj.output_data_handler.stop();
             obj.input_data_handler.stop();
         end
         function abort(obj,ME)
+            obj.iplot = [];
             obj.cmd_window.logErrorMessage(ME.message);
             obj.raw_session.stop();
             obj.output_data_handler.stop();
