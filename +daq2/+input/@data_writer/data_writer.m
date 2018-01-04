@@ -122,8 +122,7 @@ classdef data_writer < handle
             obj.extra_chan_log = containers.Map;
             
             %This should get overridden on closing
-            unspecified_error = -1;
-            obj.addSamples('trial_status',unspecified_error);
+            obj.saveData('trial_status','incomplete');
         end
         function resolveBasePath(obj)
             
@@ -174,11 +173,11 @@ classdef data_writer < handle
             %- others???
             %error_id - negative
             obj.saveData('error_value',ME);
-            obj.addSamples('trial_status',0);
+            obj.saveData('trial_status','error');
             h__send(obj,[]);
         end
         function closeWriter(obj)
-            obj.addSamples('trial_status',1);
+            obj.saveData('trial_status','success');
             h__send(obj,[]);
         end
         function delete(obj)
@@ -222,6 +221,13 @@ classdef data_writer < handle
                 
                 %Send data to worker for logging
                 %---------------------------------------
+%                 s = struct;
+%                 s.cmd = 'add_samples';
+%                 s.name = cur_chan_name;
+%                 s.data = temp_data;
+%                 s.start_I = start_I;
+%                 s.end_I = end_I;
+                
                 s = struct(...
                     'cmd','add_samples',...
                     'name',cur_chan_name,...

@@ -69,10 +69,16 @@ classdef input_data_handler < handle
                 trial_id,save_prefix,save_suffix);
             
             obj.read_cb = obj.raw_session.read_cb;
-            %TODO: Do we want to save any daq properties?????
-            %=> perhaps convert the chan settings to a struct and save???
         end
         function iplot = plotDAQData(obj,varargin)
+            %
+            %
+            %   iplot = plotDAQData(obj,varargin)
+            %
+            %   See Also
+            %   --------
+            %   daq2.input.acquired_data>plotDAQData
+            
             if isempty(obj.acquired_data)
                 obj.cmd_window.logErrorMessage(...
                     'Unable to add non-daq data when not recording')
@@ -82,15 +88,13 @@ classdef input_data_handler < handle
             iplot = obj.acquired_data.plotDAQData(varargin{:});
             obj.iplot = iplot;
             
-            %keyboard
-            
+            %When the session updates (like comments being added)
+            %then save the session data to disk
             obj.iplot_listen = addlistener(iplot.eventz,'session_updated',@obj.sessionUpdated);
-            
-            
         end
         function sessionUpdated(obj,source,event_data)  %#ok<INUSD>
-            %real_event_data = event_data.value;
-            %'interactive_plot.eventz.session_updated_event_data'
+            %
+            
             s = obj.iplot.getSessionData;
             obj.saveData('iplot_session_data',s);
         end
@@ -106,14 +110,14 @@ classdef input_data_handler < handle
             end
             obj.data_writer.saveData(name,data);
         end
-        function addNonDaqData(obj,name,data) %#ok<INUSD>
-            if isempty(obj.acquired_data)
-                obj.cmd_window.logErrorMessage(...
-                    'Unable to add non-daq data when not recording')
-                return
-            end
-            error('Not yet implemented')
-        end
+% %         function addNonDaqData(obj,name,data) %#ok<INUSD>
+% %             if isempty(obj.acquired_data)
+% %                 obj.cmd_window.logErrorMessage(...
+% %                     'Unable to add non-daq data when not recording')
+% %                 return
+% %             end
+% %             error('Not yet implemented')
+% %         end
         function xy_data = getXYData(obj,name)
             if isempty(obj.acquired_data)
                 obj.cmd_window.logErrorMessage(...

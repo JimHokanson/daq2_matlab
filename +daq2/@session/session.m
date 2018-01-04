@@ -2,10 +2,8 @@ classdef session < handle
     %
     %   Class:
     %   daq2.session
-    
-    events
-        
-    end
+    %
+    %   This is the main class for the daq2 package
     
     properties
         raw_session             %daq2.raw_session
@@ -34,7 +32,6 @@ classdef session < handle
         function value = get.is_running(obj)
            value = obj.raw_session.is_running;
         end
-        
     end
     
     methods
@@ -73,10 +70,9 @@ classdef session < handle
             obj.output_data_handler = daq2.output_data_handler(...
                 obj.raw_session,obj.perf_monitor,obj.cmd_window);
             
-            
-            
             %Listeners
             %------------------------------------
+            %TODO: We should really add a addlistener() to raw_session
             h = obj.raw_session.h;
             %- Writing handled in output_data_handler
             %- Reading in input_data_handler
@@ -87,12 +83,65 @@ classdef session < handle
     %Setup Methods  =======================================================
     methods
         function addChannelsBySpec(obj,chan_specs)
+            %
+            %   Inputs
+            %   ------
             obj.raw_session.addChannelsBySpec(chan_specs);
         end
     end
+    
+  	%Control Methods ======================================================
+    methods
+        function startBackground(obj,varargin)
+            %
+            %   Start DAQ in the background
+            %
+            %   Optional Inputs
+            %   ---------------
+            %   trial_id :
+            %   save_suffix :
+            %   save_prefix : 
+            
+            in.trial_id = [];
+            in.save_suffix = '';
+            in.save_prefix = '';
+            in = sl.in.processVarargin(in,varargin);
+            
+            obj.input_data_handler.initForStart(in.trial_id,in.save_prefix,in.save_suffix);
+            obj.output_data_handler.initForStart();
+            s = obj.raw_session.struct();
+            obj.input_data_handler.saveData('daq2_raw_session',s);
+            obj.raw_session.startBackground();
+        end
+        function stop(obj)
+            obj.iplot = [];
+            obj.raw_session.stop();
+            obj.output_data_handler.stop();
+            obj.input_data_handler.stop();
+        end
+        function abort(obj,ME)
+            obj.iplot = [];
+            obj.cmd_window.logErrorMessage(ME.message);
+            obj.raw_session.stop();
+            obj.output_data_handler.stop();
+            %Note that we are aborting, not just stopping
+            obj.input_data_handler.abort(ME);
+        end
+    end
+    
     %Methods while running ================================================
     methods
         function loadCalibrations(obj,file_paths,varargin)
+            %
+            %
+            %   Optional Inputs
+            %   ---------------
+            %   None Yet
+            %
+            %   See Also
+            %   --------
+            %   interactive_plot>loadCalibrations
+            
             if isempty(obj.iplot)
                 obj.cmd_window.logErrorMessage(...
                     'Unable to load an calibration when no plot is present');
@@ -101,11 +150,11 @@ classdef session < handle
         end
         function iplot = plotDAQData(obj,varargin)
             %
-            %
+            %   Launch Interactive Plot
             %
             %   See Also
             %   --------
-            %      
+            %  	daq2.input_data_handler>plotDAQData 
             
             iplot = obj.input_data_handler.plotDAQData(varargin{:});
             obj.iplot = iplot;
@@ -116,16 +165,16 @@ classdef session < handle
         function saveData(obj,name,data)
             obj.input_data_handler.saveData(name,data);
         end
-        function addNonDaqData(obj,name,data)
-            %
-            %   Does 2 things:
-            %   1) Saves the data to disk
-            %   2) Keeps it in memory for later use and retrieval
-            
-            error('not yet implemented')
-            
-            obj.input_data_handler.addNonDaqData(name,data);
-        end
+%         function addNonDaqData(obj,name,data)
+%             %
+%             %   Does 2 things:
+%             %   1) Saves the data to disk
+%             %   2) Keeps it in memory for later use and retrieval
+%             
+%             error('not yet implemented')
+%             
+%             obj.input_data_handler.addNonDaqData(name,data);
+%         end
         function addNonDaqXYData(obj,name,y_data,x_data)
             %
             %   Does 2 things:
@@ -157,33 +206,6 @@ classdef session < handle
         end
     end
     
-    %Control Methods ======================================================
-    methods
-        function startBackground(obj,varargin)
-            
-            in.trial_id = [];
-            in.save_suffix = '';
-            in.save_prefix = '';
-            in = sl.in.processVarargin(in,varargin);
-            
-            obj.input_data_handler.initForStart(in.trial_id,in.save_prefix,in.save_suffix);
-            obj.output_data_handler.initForStart();
-            obj.raw_session.startBackground();
-        end
-        function stop(obj)
-            obj.iplot = [];
-            obj.raw_session.stop();
-            obj.output_data_handler.stop();
-            obj.input_data_handler.stop();
-        end
-        function abort(obj,ME)
-            obj.iplot = [];
-            obj.cmd_window.logErrorMessage(ME.message);
-            obj.raw_session.stop();
-            obj.output_data_handler.stop();
-            %Note that we are aborting, not just stopping
-            obj.input_data_handler.abort(ME);
-        end
-    end
+
 end
 

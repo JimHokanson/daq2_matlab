@@ -3,8 +3,18 @@ classdef analog_input_channel
     %   Class:
     %   daq2.channel.analog_input_channel
     
+    %{
+                  h: [1×1 daq.ni.AnalogInputVoltageChannel]
+         short_name: 'stim_mon'
+               name: 'stimulus monitor'
+                 fs: 10000
+    decimation_rate: 1
+          daq_index: 1
+               spec: [1×1 daq2.channel.spec.analog_input]
+    %}
+    
     properties
-        h
+        h       %daq.ni.AnalogInputVoltageChannel
         short_name
         name
         fs
@@ -22,6 +32,15 @@ classdef analog_input_channel
             obj.spec = spec;
             obj.short_name = spec.short_name;
             obj.name = spec.name;
+        end
+        function s = struct(obj)
+            %Won't save h
+            s.short_name = obj.short_name;
+            s.name = obj.name;
+            s.fs = obj.fs;
+            s.decimation_rate = obj.decimation_rate;
+            s.daq_index = obj.daq_index;
+            %specc not yet implemented
         end
     end
 end
