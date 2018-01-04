@@ -24,6 +24,7 @@ classdef data_writer < handle
         q_send
         feval_future
         
+        process_error_thrown = false;
         
         
         h %matlab.io.MatFile
@@ -243,12 +244,16 @@ classdef data_writer < handle
             %should be saved, not an array of those values that accumulate
             %such as with addSamples
             
+            if iscell(data)
+                obj.command_window.logErrorMessage('Unable to save a cell array using saveData')
+            end
+            
             s = struct(...
                 'cmd','add_samples',...
                 'name',name,...
                 'data',data,...
                 'start_I',1,...
-                'end_I',1);
+                'end_I',length(data));
             
             h__send(obj,s)
         end
@@ -296,6 +301,12 @@ function h__send(obj,s)
 
 %TODO: look at obj.feval_future.State 'running' or .Error (should be empty)
 %- handle result accordingly ...
-obj.q_send.send(s);
+
+if isempty(obj.feval_future.Error)
+    obj.q_send.send(s);
+elseif ~obj.process_error_thrown
+    obj.command_window.logErrorMessage('Parallel writing process failed with the following message: %s',obj.feval_future.Error);
+    obj.process_error_thrown = true;
+end
 end
 
