@@ -4,11 +4,11 @@ classdef analog_output_channel
     %   daq2.channel.analog_output_channel
     
     properties
-        h
+        h       %daq.ni.AnalogOutputVoltageChannel
         short_name
         name
-        fs
-        decimation_rate
+%         fs
+%         decimation_rate
         daq_index
         spec
     end
@@ -20,6 +20,13 @@ classdef analog_output_channel
             obj.spec = spec;
             obj.short_name = spec.short_name;
             obj.name = spec.name;
+        end
+        function s = struct(obj)
+            s.short_name = obj.short_name;
+            s.name = obj.name;
+            %s.fs = obj.fs;
+            %s.decimation_rate = obj.decimation_rate;
+            s.daq_index = obj.daq_index;
         end
     end
 end

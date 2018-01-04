@@ -2,9 +2,19 @@ classdef raw_session < handle
     %
     %   Class:
     %   daq2.raw_session
+    %
+    %   This class is meant to be the direct interface to the daq.
+    %
+    %   See Also
+    %   --------
+    %   daq2.session
     
-    properties (Hidden)
+    properties 
+        d0 = '----- Internal Objects ------'
         chans = {}
+        %daq2.channel.analog_input_channel
+        %daq2.channel.analog_output_channel
+        
         type
         %1 - analog input
         %2 - analog output
@@ -27,6 +37,7 @@ classdef raw_session < handle
         
         %TODO: Eventually these should be listeners
     end
+    
     properties
         %Format src,event
         read_cb
@@ -118,7 +129,6 @@ classdef raw_session < handle
             samples = round(value*obj.h.Rate);
             obj.h.NotifyWhenScansQueuedBelow = samples;
         end
-        
         function value = get.read_cb_samples(obj)
             value = obj.h.NotifyWhenDataAvailableExceeds;
         end
@@ -146,8 +156,15 @@ classdef raw_session < handle
             value = obj.h.ScansOutputByHardware;
         end
         function value = get.summary(obj)
+            %
+            %   By default the Matlab daq object shows a summary, whereas
+            %   by default I show the properties. This property exposes
+            %   that summary text.
+            %
+            
             %This will show properties, but the link won't work
             %value = evalc('obj.h');
+            
             value = evalc('disp(obj.h)');
         end
     end
@@ -168,7 +185,37 @@ classdef raw_session < handle
             obj.h = daq.createSession(type);
             obj.cmd_window = cmd_window;
         end
+        function s = struct(obj)
+            %TODO: Not all saved ...
+            s = struct;
+          	s.VERSION  = 1;
+            s.STRUCT_DATE = now;
+            s.TYPE = 'daq2.raw_session';
+            
+            s.chans = cellfun(@struct,obj.chans,'un',0);
+            s.type = obj.type;
+            s.rate = obj.rate;
+            s.read_cb_time = obj.read_cb_time;
+            s.read_cb_samples = obj.read_cb_samples;
+            s.write_cb_time = obj.write_cb_time;
+            s.write_cb_samples = obj.write_cb_samples;
+            s.summary = obj.summary;
+            
+        end
+        function delete(obj)
+            try %#ok<TRYNC>
+                obj.h.stop();
+            end
+            try %#ok<TRYNC>
+                %disp('wtf1')
+                release(obj.h);
+                %disp('wtf2')
+            end
+        end
     end
+    
+    %Control Methods
+    %======================================================================
     methods
         function startBackground(obj)
             obj.h.startBackground();
@@ -176,6 +223,9 @@ classdef raw_session < handle
         function stop(obj)
             obj.h.stop();
         end
+    end
+    
+    methods
         function queueOutputData(obj,data)
             %
             %   This may fail if no outputs have been declared
@@ -185,6 +235,10 @@ classdef raw_session < handle
             %       'daq:Session:noOutputChannels'
             obj.h.queueOutputData(data);
         end
+    end
+    
+    %Setup ================================================================
+    methods
         function addChannelsBySpec(obj,chan_specs)
             %
             %   Form:
@@ -222,16 +276,10 @@ classdef raw_session < handle
         function devices = getAvailableDevices(obj)
             devices = daq.getDevices();
         end
-        function delete(obj)
-            try %#ok<TRYNC>
-                obj.h.stop();
-            end
-            try %#ok<TRYNC>
-                %disp('wtf1')
-                release(obj.h);
-                %disp('wtf2')
-            end
-        end
+    end
+    methods
+        
+
         %TODO: Expose the other adding functions to the user ...
     end
 end
