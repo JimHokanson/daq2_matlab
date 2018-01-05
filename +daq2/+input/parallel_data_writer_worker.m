@@ -32,6 +32,10 @@ while (true)
         switch s.cmd
             case 'add_samples'
                 h_matfile.(s.name)(s.start_I:s.end_I,1) = s.data;
+            case 'clear'
+                h_matfile.(s.name) = [];
+            case 'save'
+                h_matfile.(s.name) = s.data;
             otherwise
                 q_send.send('Unrecognized command')
         end

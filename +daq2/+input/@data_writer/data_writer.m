@@ -250,16 +250,19 @@ classdef data_writer < handle
             %should be saved, not an array of those values that accumulate
             %such as with addSamples
             
-            if iscell(data)
-                obj.command_window.logErrorMessage('Unable to save a cell array using saveData')
-            end
+            %I don't think this is needed becaue of the way
+            %we write now
+%             s = struct(...
+%                 'cmd','clear',...
+%                 'name',name);
+%             h__send(obj,s)
             
             s = struct(...
-                'cmd','add_samples',...
+                'cmd','save',...
                 'name',name,...
-                'data',data,...
-                'start_I',1,...
-                'end_I',length(data));
+                'data',[]);
+            %Avoid struct expansion from cell data
+            s.data = data;
             
             h__send(obj,s)
         end
@@ -311,7 +314,9 @@ function h__send(obj,s)
 if isempty(obj.feval_future.Error)
     obj.q_send.send(s);
 elseif ~obj.process_error_thrown
-    obj.command_window.logErrorMessage('Parallel writing process failed with the following message: %s',obj.feval_future.Error);
+    obj.command_window.logErrorMessage(...
+        'Parallel writing process failed with the following message: %s',...
+        obj.feval_future.Error.message);
     obj.process_error_thrown = true;
 end
 end
