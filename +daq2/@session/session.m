@@ -12,12 +12,15 @@ classdef session < handle
         output_data_handler     %daq2.output_data_handler
         options
         recorded_data
+        parallel_session_enabled
         
         cmd_window  %Default: daq2.command_window
         %Interface:
         %   logMessage(string,formatting_varargin)
         %   logError(string,formmatting_varargin)
         iplot %interactive_plot
+        
+        error_cb
     end
     
     properties (Dependent)
@@ -62,15 +65,60 @@ classdef session < handle
             
             obj.perf_monitor = daq2.perf_monitor(obj.cmd_window);
             
-            if options.use_parallel
-                %TODO: Open parallel pool and ensure 2 free workers
+            obj.parallel_session_enabled = options.use_parallel;
+            if obj.parallel_session_enabled
+                n_workers_needed = 2;
+            else
+                n_workers_needed = 1;
+            end
+            
+            %Parallel pool logic ...
+            %------------------------------------------------------
+            current_pool = gcp('nocreate');
+            if isempty(current_pool)
+                obj.command_window.logMessage('Staring parallel pool for daq2 code')
+                current_pool = gcp;
+                obj.command_window.logMessage('Parallel pool initialized')
+            end
+            
+            if current_pool.NumWorkers < n_workers_needed
+                %TODO: Provide more info
+                error('Invalid # of workers in parallel pool')
+            end
+            
+            running_futures = current_pool.FevalQueue.RunningFutures;
+            if ~isempty(running_futures)
+                %Stop any that are related to this code ...
+                %
+                %Note this means we can't run two sessions at once
+                fcn_handles = {running_futures.Function};
+                fcn_strings = cellfun(@(x) func2str(x),fcn_handles,'un',0);
+
+                mask = ismember(fcn_strings,...
+                    {'daq2.input.parallel_data_writer_worker',...
+                    'daq2.parallel_session_worker'});
+                for i = 1:length(running_futures)
+                    if mask(i)
+                        cancel(running_futures(i));
+                    end
+                end
+
+                %After possibly stopping some, check if we are ok
+                running_futures = current_pool.FevalQueue.RunningFutures;
+                n_free = current_pool.NumWorkers - length(running_futures);
+                if n_free < n_workers_needed
+                    error('Invalid # of FREE workers in parallel pool')
+                end
+            end
+            
+            if obj.parallel_session_enabled
                 obj.raw_session = daq2.parallel_raw_session(...
                     type,obj.perf_monitor,obj.cmd_window);
             else
-                %TODO: Open parallel pool and ensure 1 free worker
                 obj.raw_session = daq2.raw_session(...
                     type,obj.perf_monitor,obj.cmd_window);
             end
+            
             
             %Input/Output Handlers
             %------------------------------------------------------
@@ -101,6 +149,32 @@ classdef session < handle
             %   ------
             obj.raw_session.addChannelsBySpec(chan_specs);
         end
+        function addStimulator(obj,stim_fcn,s)
+            %
+            %
+            %   Examples
+            %   --------
+            %   fs = 10000;
+            %   pulse_width_us = 200;
+            %   waveform = daq2.basic_stimulator.getBiphasicWaveform(fs,pulse_width_us) 
+            %   stim_fcn = @daq2.basic_stimulator
+            %   s = struct;
+            %   %Add 0.5 seconds of data every time we run
+            %   s.default_time_growth = 0.5;
+            %   s.params = struct;
+            %   s.params.waveform = waveform;
+            %   s.params.amp = 0;
+            %   s.params.rate = 1;
+            %   session.addStimulator(stim_fcn,s);
+            
+            obj.output_data_handler.addStimulator(stim_fcn,s)
+        end
+        function updateStimParams(obj,s)
+            obj.output_data_handler.updateStimParams(s); 
+        end
+        function queueMoreData(obj,n_seconds_add)
+            obj.output_data_handler.queueMoreData(n_seconds_add);
+        end
     end
     
   	%Control Methods ======================================================
@@ -127,6 +201,8 @@ classdef session < handle
             obj.raw_session.startBackground();
         end
         function stop(obj)
+            %TODO: Ignore if not running ...
+            %- if we abort, then stop, don't run stop
             obj.iplot = [];
             obj.raw_session.stop();
             obj.output_data_handler.stop();
@@ -135,7 +211,12 @@ classdef session < handle
         function abort(obj,ME)
             obj.iplot = [];
             obj.cmd_window.logErrorMessage(ME.message);
-            obj.raw_session.stop();
+            %I don't think this is needed if the DAQ is throwing the error
+            %
+            %I keep getting:
+            %identifier: 'daq:Session:stopDidNotComplete'
+            %       message: 'Internal Error: The hardware did not report that it stopped before the timeout elapsed.'
+            %obj.raw_session.stop();
             obj.output_data_handler.stop();
             %Note that we are aborting, not just stopping
             obj.input_data_handler.abort(ME);
@@ -210,12 +291,20 @@ classdef session < handle
     end
     
     methods
-        function errorHandlerCallback(obj,source,event)
-            ME = event.Error;
-            obj.abort(ME);
+        function errorHandlerCallback(obj,ME)
+            %
+            %   Modified error listener format, ME Only
+            
             %TODO: Do we want to add data to any file???
             %=> if so, handle in input_data_handler.abort ....
-            obj.cmd_window.logErrorMessage(event.Error.message);
+            obj.cmd_window.logErrorMessage(ME.message);
+            
+            %Call user first before we clean up non-DAQ calls ...
+            if ~isempty(obj.error_cb)
+               obj.error_cb(ME); 
+            end
+            
+            obj.abort(ME);
         end
     end
     

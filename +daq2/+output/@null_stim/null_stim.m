@@ -11,14 +11,14 @@ classdef null_stim < handle
         function obj = null_stim(varargin)
             
         end
-        function init(obj)
-            
+        function data = init(obj)
+            data = [];
         end
         function data = getData(obj)
             data = [];
         end
-        function updateParams(obj,varargin)
-            
+        function data = updateParams(obj,varargin)
+            data = [];
         end
     end
 end

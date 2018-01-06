@@ -19,6 +19,13 @@ classdef raw_session < handle
         %1 - analog input
         %2 - analog output
         %...
+        
+        read_mode = 'auto'
+        %- auto
+        %- time
+        %- samples
+        write_mode = 'auto'
+        h_start_tic
     end
     
     properties
@@ -237,7 +244,7 @@ classdef raw_session < handle
             %   ---------
             %   1) 'DataAvailable' - see input_data_handler
             %   2) 'ErrorOccurred' - see daq2.session
-            %   3) 
+            %   3) 'DataRequired'
             
             obj.h.addlistener(name,function_handle);
         end
@@ -249,9 +256,14 @@ classdef raw_session < handle
         
         function startBackground(obj)
             obj.h.startBackground();
+            obj.h_start_tic = tic;
         end
         function stop(obj)
             obj.h.stop();
+        end
+        function output = getElapsedSessonTime(obj)
+           %This is currently not very accurate ... 
+           output = toc(obj.h_start_tic);
         end
     end
     

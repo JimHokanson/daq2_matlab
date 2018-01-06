@@ -65,20 +65,10 @@ classdef analog_input
                 other = {};
             end
             
-            keyboard
-            
-            %TODO: Expose method in raw_session
-            [ch,idx] = addAnalogInputChannel(...
-                raw_session.h,...
-                device_id_local,...
-                obj.daq_port,...
-                meas_type_local);
+            [ch,idx] = raw_session.addAnalogInput(device_id_local,...
+                obj.daq_port,meas_type_local,other);
             
             chan = daq2.channel.analog_input_channel(ch,idx,fs_local,dec_rate,obj);
-            
-            %Pushing some other settings
-            %----------------------------------------
-            
         end
     end
 end
