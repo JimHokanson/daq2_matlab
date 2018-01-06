@@ -47,8 +47,7 @@ classdef input_data_handler < handle
             obj.cmd_window = cmd_window;
             obj.options = options;
             
-            raw_session.h.addlistener('DataAvailable',@obj.readDataCallback);
-            
+            raw_session.addListener('DataAvailable',@obj.readDataCallback)
         end
         function initForStart(obj,trial_id,save_prefix,save_suffix)
             %

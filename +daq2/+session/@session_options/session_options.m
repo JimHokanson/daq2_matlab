@@ -8,6 +8,7 @@ classdef session_options
     %   daq2.session
     
     properties
+        use_parallel = false
         default_trial_duration = 180;
       	base_save_path = ''
         command_window 

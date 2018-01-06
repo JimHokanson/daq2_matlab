@@ -64,7 +64,7 @@ classdef data_writer < handle
             %   cmd_win :
             %   chan_names :
             
-            %Max amount of time to wait for the parallel process (thread?)
+            %Max amount of time to wait for the parallel process
             %to launch and to send a queue back to this process
             MAX_WAIT_PARALLEL_STARTUP = 5; %seconds
             
@@ -104,6 +104,9 @@ classdef data_writer < handle
             end
             
             if q_receive.QueueLength == 0
+                %TODO: Output to command window
+                %Since we can fail in the constructor, we should have the 
+                %constructor wrapped in a static creation method
                 error('Unable to receive queue back from parallel function');
             else
                 obj.q_send = q_receive.poll();
@@ -242,25 +245,20 @@ classdef data_writer < handle
             
         end
         function saveData(obj,name,data)
-            %For saving the plotting data
-            %=> comments, settings, etc
             %
-            
-            %This should be used when only 1 version of the data
-            %should be saved, not an array of those values that accumulate
-            %such as with addSamples
-            
-            %I don't think this is needed becaue of the way
-            %we write now
-%             s = struct(...
-%                 'cmd','clear',...
-%                 'name',name);
-%             h__send(obj,s)
+            %   This method saves data as a field to the file. This is
+            %   equivalent to:
+            %       h.(name) = data 
+            %   Where h is the matfile handle.
+            %
+            %   This is as opposed to the other saving methods which index
+            %   into the field.
             
             s = struct(...
                 'cmd','save',...
                 'name',name,...
                 'data',[]);
+            
             %Avoid struct expansion from cell data
             s.data = data;
             

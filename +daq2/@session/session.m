@@ -59,24 +59,37 @@ classdef session < handle
             else
                 obj.cmd_window = in.command_window();
             end
-            obj.raw_session = daq2.raw_session(type,obj.cmd_window);
+            
             obj.perf_monitor = daq2.perf_monitor(obj.cmd_window);
             
+            if options.use_parallel
+                %TODO: Open parallel pool and ensure 2 free workers
+                obj.raw_session = daq2.parallel_raw_session(...
+                    type,obj.perf_monitor,obj.cmd_window);
+            else
+                %TODO: Open parallel pool and ensure 1 free worker
+                obj.raw_session = daq2.raw_session(...
+                    type,obj.perf_monitor,obj.cmd_window);
+            end
             
             %Input/Output Handlers
             %------------------------------------------------------
             obj.input_data_handler = daq2.input_data_handler(...
                 obj.raw_session,obj.perf_monitor,obj.cmd_window,options);
-            obj.output_data_handler = daq2.output_data_handler(...
-                obj.raw_session,obj.perf_monitor,obj.cmd_window);
+            
+            if options.use_parallel
+                obj.output_data_handler = daq2.parallel_output_data_handler(...
+                    obj.raw_session,obj.perf_monitor,obj.cmd_window);
+            else
+                obj.output_data_handler = daq2.output_data_handler(...
+                    obj.raw_session,obj.perf_monitor,obj.cmd_window);
+            end
             
             %Listeners
             %------------------------------------
-            %TODO: We should really add a addlistener() to raw_session
-            h = obj.raw_session.h;
             %- Writing handled in output_data_handler
             %- Reading in input_data_handler
-            h.addlistener('ErrorOccurred',@obj.errorHandlerCallback);
+            obj.raw_session.addListener('ErrorOccurred',@obj.errorHandlerCallback);
         end
     end
     
