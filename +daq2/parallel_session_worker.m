@@ -136,7 +136,7 @@ try
             end
         else  
             n_pauses = n_pauses + 1;
-            pause(0.02);
+            pause(0.1);
         end
     end
 catch ME
