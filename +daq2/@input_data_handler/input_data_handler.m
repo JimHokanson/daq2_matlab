@@ -183,6 +183,8 @@ classdef input_data_handler < handle
             %   obj.getAverageData('as_vector',false)
             %
             
+            in.seconds_back = []; %NYI
+            in.x_range = []; %NYI
             in.channel = '';
             in.as_vector = true;
             in = sl.in.processVarargin(in,varargin);
