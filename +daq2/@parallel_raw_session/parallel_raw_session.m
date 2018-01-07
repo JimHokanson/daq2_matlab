@@ -10,7 +10,6 @@ classdef parallel_raw_session < handle
         perf_mon        %daq2.perf_monitor
         command_window  %Default: daq2.command_window
         options         %NYI - send to parallel worker
-        pool
         feval_future
         q_send
         process_error_thrown = false
@@ -20,8 +19,11 @@ classdef parallel_raw_session < handle
         h_tic_send
         h_tic_recv
         h_tic_work_send
+        
         p_daq_struct %Gets set with struct when requested ...
-        daq_props
+        
+        daq_props %struct
+        %This is our local copy of all the daq props ...
         
      	read_mode = 'auto'
         
@@ -220,7 +222,6 @@ classdef parallel_raw_session < handle
             
             %Requires parallel pool toolbox
             %------------------------------
-            obj.pool = gcp;
             
             q_receive = parallel.pool.DataQueue;
             L1 = afterEach(q_receive, @(data) obj.initQSend(data));

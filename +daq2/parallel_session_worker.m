@@ -6,25 +6,6 @@ function parallel_session_worker(type,q_send)
 %   --------
 %   daq2.parallel_raw_session
 
-%This call is slow ...
-%Needs to be done once ...
-%hw = daq.HardwareInfo.getInstance()
-
-%Output Commands
-%----------------
-%   'struct' - sending session struct to client
-%   'disp' - sending session struct to client for display ...
-%   'error'
-
-%Stim Interface
-%- 1 input constructor
-%- data = init()
-%       Must return data for initial queue
-%- data = getData()
-%- updateParams(s)
-%      s can contain anything
-%- 
-
 %Received Commands
 %---------------------------
 %- 'add_analog_input'
@@ -61,22 +42,20 @@ try
     
     %State variables
     %---------------
-    %- session
-    %- stim
     stim = daq2.output.null_stim;
     is_running = false;
     n_analog_inputs = 0;
     n_analog_outputs = 0;
     n_loops = 0;
     n_pauses = 0;
-    %dh = debug_handle;
-
     
     %1 Initialize session ...
     %------------------------------------------
     session = daq.createSession(type);
-    session.addlistener('DataAvailable',@(src,event)h__dataAvailable(src,event,q_send));
-    session.addlistener('ErrorOccurred',@(src,event)h__errorTriggered(src,event,q_send));
+    session.addlistener('DataAvailable',...
+        @(src,event)h__dataAvailable(src,event,q_send));
+    session.addlistener('ErrorOccurred',...
+        @(src,event)h__errorTriggered(src,event,q_send));
     while (true)
         n_loops = n_loops + 1;
         if is_running && n_analog_outputs && (session.ScansQueued < session.NotifyWhenScansQueuedBelow)
@@ -89,12 +68,21 @@ try
 
             switch s.cmd
                 %Keep this first since it should be the most often
+                
+                %----------------------------------------------------------
                 case 'update_stim'
+                    %.data - this can be anything ...
                     data = stim.updateParams(is_running,s.data);
                     if ~isempty(data)
                        session.queueOutputData(data);
                     end
+                    
+                %----------------------------------------------------------
                 case 'add_analog_input'
+                    %.id - device id
+                    %.port - daq_port
+                    %.type - measurement type
+                    %.other - prop/value pairs
                     [ch,idx] = session.addAnalogInputChannel(s.id,s.port,s.type);
             
                     for i = 1:2:length(s.other)
@@ -103,22 +91,58 @@ try
                         ch.(prop) = value;
                     end 
                     n_analog_inputs = n_analog_inputs + 1;
+                    
+                %----------------------------------------------------------    
                 case 'add_analog_output'
+                    %.id - device id
+                    %.port - daq port
+                    %.type - measurement type
                     [ch,idx] = session.addAnalogOutputChannel(s.id,s.port,s.type);
                     n_analog_outputs = n_analog_outputs + 1;
+                    
+                %----------------------------------------------------------    
                 case 'construct_stim'
+                      %.stim_fcn - function handle for stimulator
+                      %.data - input structure to stimulator
                       fs = session.Rate;
                       min_queue_samples = session.NotifyWhenScansQueuedBelow;
                       fh = s.stim_fcn;
                       stim = fh(fs,min_queue_samples,s.data);
-                case 'update_prop'
-                    session.(s.name) = s.value;
+                
+                %----------------------------------------------------------
+                case 'perf'
+                    %Create perf struct
+                    p = struct;
+                    p.n_pauses = n_pauses;
+                    p.n_loops = n_loops;
+                    
+                    s2 = struct;
+                    s2.cmd = 'perf';
+                    s2.data = p;
+                    h__send(q_send,s2)
+                    
+                %----------------------------------------------------------
+                case 'q_data'
+                    %.data - TODO: rename
+                    n_seconds_add = s.data;
+                    data = stim.getData(n_seconds_add);
+                    if ~isempty(data)
+                       session.queueOutputData(data);
+                    end
+                    
+                %----------------------------------------------------------    
+                case 'quit'
+                    return
+                    
+                %----------------------------------------------------------
                 case {'struct' 'disp'}
-                    temp = h__getSessionStruct(session,n_loops,n_pauses);
+                    temp = h__getSessionStruct(session);
                     s2 = struct;
                     s2.cmd = s.cmd;
                     s2.data = temp;
                     h__send(q_send,s2)
+                    
+                %----------------------------------------------------------
                 case 'start'
                     data = stim.init();
                     if ~isempty(data)
@@ -126,19 +150,21 @@ try
                     end
                     session.startBackground();
                     is_running = true;
+                    
+                %----------------------------------------------------------    
                 case 'stop'
                     is_running = false;
                     session.stop();
                 %case 'update_stim'
-                %   Now first since most frequent    
-                case 'q_data'
-                    n_seconds_add = s.data;
-                    data = stim.getData(n_seconds_add);
-                    if ~isempty(data)
-                       session.queueOutputData(data);
-                    end
-                case 'quit'
-                    return
+                %   Now first since most frequent 
+                
+                %----------------------------------------------------------
+                case 'update_prop'
+                    %.name - prop name
+                    %.value -  prop value
+                    session.(s.name) = s.value;
+                
+                
                 otherwise
                     error('Unrecognized command')
             end
@@ -159,10 +185,7 @@ function h__sendError(q_send,ME)
     h__send(q_send,s)
 end
 
-function s = h__getPerfStruct(p)
-
-end
-function s = h__getSessionStruct(session,n_loops,n_pauses,dh)
+function s = h__getSessionStruct(session)
     %Serialize the session ...
     s = struct;
     fn = fieldnames(session);
@@ -176,18 +199,19 @@ function s = h__getSessionStruct(session,n_loops,n_pauses,dh)
     %I think these point to HW specific resources ...
     s.Channels = [];
     s.Connections = [];
-    s.n_loops = n_loops;
-    s.n_pauses = n_pauses;
-    %s.n_listens = dh.n_listens;
 end
 
-function h__dataAvailable(src,data,q_send)
+function h__dataAvailable(~,data,q_send)
     %We need a try/catch because otherwise errors
     %are silent in the listener
     try
         s = struct;
         s.cmd = 'data_available';
         s.src = [];
+        
+        %TODO: Implement decimation here to avoid
+        %transmission overhead ...
+        
         %Can't write to Source in data
         %so we copy it ...
         s2 = struct;
@@ -196,6 +220,7 @@ function h__dataAvailable(src,data,q_send)
         s2.Source = [];
         s2.EventName = data.EventName;
         s2.TriggerTime = data.TriggerTime;
+        
         s.data = s2;
         h__send(q_send,s)
     catch ME
