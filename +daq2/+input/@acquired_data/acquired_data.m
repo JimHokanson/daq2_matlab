@@ -101,14 +101,24 @@ classdef acquired_data < handle
             %
             %   TODO: This is a work in progress ...
             %
-            %
-                        
-% %             %Default plot width ??????
-% %             in.width_s = 10;
-% %             in = sl.in.processVarargin(in,varargin);
+            %   Optional Inputs
+            %   ---------------
+            %   
+                 
+            in.h_fig = [];
+            in = sl.in.processVarargin(in,varargin);
             
-            f = figure;
-            set(f,'Position',[1 1 1200 800]);
+            if isempty(in.h_fig) || ~isvalid(in.h_fig)
+                f = figure;
+                %Only position if it didn't exist
+                set(f,'Position',[1 1 1200 800]);
+            else
+                f = in.h_fig;
+                clf
+                figure(in.h_fig);
+            end
+            
+            
             ax = cell(obj.n_chans,1);
             for i = 1:obj.n_chans
                 ax{i} = subplot(obj.n_chans,1,i);
