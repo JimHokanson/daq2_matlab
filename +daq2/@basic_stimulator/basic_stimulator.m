@@ -199,7 +199,13 @@ classdef basic_stimulator < handle
             %           .rate
             %           .amp
             %           .ramp_time
+            %           .terminal_amp
+            %           .terminal_rate
+            %
             %           IMPORTANT: RESET rate to 1 and amp to 0 after mode2
+            
+            %TODO: Expose this to the user ...
+            START_AMP_PCT_FOR_RAMP = 0.33;
             
             data = [];
             if s.mode == 1
@@ -213,18 +219,16 @@ classdef basic_stimulator < handle
                 %Gen pulse times (& amps for ramp up)
                 %---------------------------------------------
                 dt = 1/s.rate;
-                if s.build_time ~= 0
-                    total_duration = s.build_time + s.duration;
+                if s.ramp_time ~= 0
+                    total_duration = s.ramp_time + s.duration;
                     pulse_times = dt:dt:total_duration;
-                    I = find(pulse_times > s.build_time,1);
+                    I = find(pulse_times > s.ramp_time,1);
                     
-                    %TODO: Expose this to the user ...
-                    start_amp = 0.33*s.amp;
+                    start_amp = START_AMP_PCT_FOR_RAMP*s.amp;
                     amps = linspace(start_amp,s.amp,I);
                 else
                     I = 0;
                     pulse_times = 0:dt:s.duration;
-                    %amps = s.amp*ones(1,length(pulse_times));
                 end
                 
                 
@@ -251,10 +255,21 @@ classdef basic_stimulator < handle
                 end
                 
                 %Update state
-                %----------------------
+                %------------------------------------------------------
                 obj.n_samples_written = obj.n_samples_written + 1;
                 obj.n_writes = obj.n_writes + 1;
                 obj.last_pulse_start_sample = obj.n_samples_written - n_samples_waveform + 1;
+                
+                %Behavior following stim
+                %-------------------------------------------------------
+                if isfield(s,'terminal_amp')
+                    obj.amp = s.terminal_amp;
+                end
+                
+                if isfield(s,'terminal_rate')
+                    obj.rate = s.terminal_rate;
+                end
+                
             else
                 error('Stim mode not recognized')
             end
