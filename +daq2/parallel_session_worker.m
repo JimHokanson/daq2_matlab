@@ -43,6 +43,8 @@ try
     loop_etimes = zeros(1,N_LOOP);
     loop_types = zeros(1,N_LOOP);
     loop_is_full = false;
+    output_min_time = 0; %#ok<NASGU>
+    pause_time = 0; %#ok<NASGU>
     
     %1 Initialize session with listeners
     %----------------------------------------------------------------------
@@ -55,6 +57,9 @@ try
         @(src,event)h__dataAvailable(event,q_send,log));
     session.addlistener('ErrorOccurred',...
         @(src,event)h__errorTriggered(event,q_send));
+    
+    output_min_time = double(session.NotifyWhenScansQueuedBelow)/session.Rate;
+    pause_time = 1/3*output_min_time;
     
     while (true)
         n_loops = n_loops + 1;
@@ -70,10 +75,14 @@ try
         elseif q_recv.QueueLength > 0
             s = q_recv.poll();
             
+            %Generic ...
+            loop_type = 2;
+            
             switch s.cmd
                 %Keep this first since it should be the most often
                 %----------------------------------------------------------
                 case 'update_stim'
+                    loop_type = 2.01;
                     %   Pass new parameters to the stimulator.
                     %
                     %.data - this can be anything ...
@@ -84,6 +93,7 @@ try
                     
                     %----------------------------------------------------------
                 case 'add_analog_input'
+                    loop_type = 2.02;
                     %   Add an analog input channel to the session
                     %
                     %   .id - device id
@@ -102,6 +112,7 @@ try
                     
                     %----------------------------------------------------------
                 case 'add_analog_output'
+                    loop_type = 2.03;
                     %   Add an analog output channel to the session
                     %
                     %   .id - device id
@@ -113,6 +124,7 @@ try
                     
                     %----------------------------------------------------------
                 case 'construct_stim'
+                    loop_type = 2.04;
                     %   Construct the stimulator locally
                     %
                     %   .stim_fcn - function handle for stimulator
@@ -125,6 +137,7 @@ try
                     
                     %----------------------------------------------------------
                 case 'perf'
+                    loop_type = 2.05;
                     %   Create and return perf struct
                     p = struct;
                     p.n_pauses = n_pauses;
@@ -136,7 +149,7 @@ try
                     p.read_data_process_times = log.etimes_process;
                     p.read_data_send_times = log.etimes_send;
                     p.read_data_process_I = log.I1;
-                    p.reda_data_send_I = log.I2;
+                    p.read_data_send_I = log.I2;
                     
                     s2 = struct;
                     s2.cmd = 'perf';
@@ -145,6 +158,7 @@ try
                     
                     %----------------------------------------------------------
                 case 'q_data'
+                    loop_type = 2.06;
                     %   This is a direct call to the stimulator to queue
                     %   more data
                     %   
@@ -158,10 +172,12 @@ try
                     
                     %----------------------------------------------------------
                 case 'quit'
+                    loop_type = 2.07; %#ok<NASGU>
                     return
                     
                     %----------------------------------------------------------
                 case {'struct' 'disp'}
+                    loop_type = 2.08;
                     
                     %Get session struct
                     temp = h__getSessionStruct(session);
@@ -174,6 +190,7 @@ try
                     
                     %----------------------------------------------------------
                 case 'start'
+                    loop_type = 4;
                     %- no fields besides cmd
                     data = stim.init();
                     if ~isempty(data)
@@ -184,25 +201,29 @@ try
                     
                     %----------------------------------------------------------
                 case 'stop'
+                    loop_type = 5;
                     %- no fields besides cmd
                     is_running = false;
                     session.stop();
                     %----------------------------------------------------------
                 case 'update_daq_prop'
+                    loop_type = 2.09;
                     %   Update a property of the DAQ session
                     %
                     %   .name - prop name
                     %   .value -  prop value
                     
                     session.(s.name) = s.value;
+                    output_min_time = double(session.NotifyWhenScansQueuedBelow)/session.Rate;
+                    pause_time = 1/3*output_min_time;
                 otherwise
                     error('Unrecognized command')
             end
             
-            loop_type = 2;
+            
         else
             n_pauses = n_pauses + 1;
-            pause(LOOP_PAUSE_TIME);
+            pause(pause_time-toc(h_tic));
             loop_type = 3;
         end
         
