@@ -20,17 +20,19 @@ classdef input_data_handler < handle
     
 
     properties
-        raw_session
+        is_parallel
+        raw_session  %daq2.raw_session OR daq2.parallel_raw_session
         perf_monitor
         cmd_window
         options
         
         %Objects for processing acquired data
+        %------------------------------------
         decimation_handler
         acquired_data    %daq2.input.acquired_data
         data_writer      %daq2.input.data_writer   
         read_cb
-        iplot
+        iplot       %interactive_plot
         
         iplot_listen    %Event listener
         %Listens for the session to be updated and saves any changes to
@@ -38,10 +40,13 @@ classdef input_data_handler < handle
     end
     
     methods
-        function obj = input_data_handler(raw_session,perf_monitor,cmd_window,options)
+        function obj = input_data_handler(is_parallel,raw_session,...
+                perf_monitor,cmd_window,options)
             %
-            %   obj = daq2.input_data_handler(raw_session,perf_monitor,cmd_window)
+            %   obj = daq2.input_data_handler(is_parallel,raw_session,
+            %           perf_monitor,cmd_window)
             
+            obj.is_parallel = is_parallel;
             obj.raw_session = raw_session;
             obj.perf_monitor = perf_monitor;
             obj.cmd_window = cmd_window;
@@ -53,12 +58,13 @@ classdef input_data_handler < handle
             %
             %   initForStart(obj,trial_id,save_prefix,save_suffix)
             %
-            %
+            %   Inputs
+            %   -------------
+            %   trial_id :
+            %   save_prefix : 
+            %   save_suffix : 
             %
             
-            %Initialize
-            %- data writing
-            %- decimation handling
             obj.decimation_handler = daq2.input.decimation_handler(...
                 obj.raw_session,obj.perf_monitor);
             obj.acquired_data = daq2.input.acquired_data(...

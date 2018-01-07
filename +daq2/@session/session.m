@@ -11,7 +11,7 @@ classdef session < handle
         input_data_handler      %daq2.input_data_handler
         output_data_handler     %daq2.output_data_handler OR daq2.parallel_output_data_handler
         options                 %daq2.session.session_options
-
+        
         parallel_session_enabled %logical
         
         cmd_window  %Default: daq2.command_window
@@ -27,16 +27,16 @@ classdef session < handle
     end
     
     properties (Dependent)
-        is_running 
+        is_running
         rate
     end
     
     methods
         function value = get.rate(obj)
-           value = obj.raw_session.rate; 
+            value = obj.raw_session.rate;
         end
         function value = get.is_running(obj)
-           value = obj.raw_session.is_running;
+            value = obj.raw_session.is_running;
         end
     end
     
@@ -71,72 +71,8 @@ classdef session < handle
             obj.perf_monitor = daq2.perf_monitor(obj.cmd_window);
             
             obj.parallel_session_enabled = options.use_parallel;
-            if obj.parallel_session_enabled
-                n_workers_needed = 2;
-            else
-                n_workers_needed = 1;
-            end
             
-            %Parallel pool logic ...
-            %------------------------------------------------------
-            current_pool = gcp('nocreate');
-            if isempty(current_pool)
-                obj.cmd_window.logMessage('Staring parallel pool for daq2 code')
-                current_pool = gcp;
-                obj.cmd_window.logMessage('Parallel pool initialized')
-            end
-            
-            %This is only needed when the DAQ will be run on a parallel
-            %worker
-            if obj.parallel_session_enabled
-                %Ideally we would be able to choose workers ...
-                %This might need to be adjusted ...
-                fh = @daq2.utils.initDAQInfo;
-                f = parfevalOnAll(gcp,fh,0);
-                h_tic = tic;
-                hw_loading_msg_shown = false;
-                while (toc(h_tic) < MAX_HW_STARTUP_TIME && ~strcmp(f.State,'finished'))
-                    if toc(h_tic) > 1 && ~hw_loading_msg_shown
-                        obj.cmd_window.logMessage('Parallel processes are initializing Generic Matlab DAQ Info')
-                        hw_loading_msg_shown = true;
-                    end
-                    pause(0.1);
-                end
-                
-                if hw_loading_msg_shown
-                    obj.cmd_window.logMessage('Done loading generic DAQ Info')
-                end
-            end
-            
-            if current_pool.NumWorkers < n_workers_needed
-                %TODO: Provide more info
-                error('Invalid # of workers in parallel pool')
-            end
-            
-            running_futures = current_pool.FevalQueue.RunningFutures;
-            if ~isempty(running_futures)
-                %Stop any that are related to this code ...
-                %
-                %Note this means we can't run two sessions at once
-                fcn_handles = {running_futures.Function};
-                fcn_strings = cellfun(@(x) func2str(x),fcn_handles,'un',0);
-
-                mask = ismember(fcn_strings,...
-                    {'daq2.input.parallel_data_writer_worker',...
-                    'daq2.parallel_session_worker'});
-                for i = 1:length(running_futures)
-                    if mask(i)
-                        cancel(running_futures(i));
-                    end
-                end
-
-                %After possibly stopping some, check if we are ok
-                running_futures = current_pool.FevalQueue.RunningFutures;
-                n_free = current_pool.NumWorkers - length(running_futures);
-                if n_free < n_workers_needed
-                    error('Invalid # of FREE workers in parallel pool')
-                end
-            end
+            h__initParallelPool(obj,MAX_HW_STARTUP_TIME)
             
             if obj.parallel_session_enabled
                 obj.raw_session = daq2.parallel_raw_session(...
@@ -146,11 +82,11 @@ classdef session < handle
                     type,obj.perf_monitor,obj.cmd_window);
             end
             
-            
             %Input/Output Handlers
             %------------------------------------------------------
             obj.input_data_handler = daq2.input_data_handler(...
-                obj.raw_session,obj.perf_monitor,obj.cmd_window,options);
+                obj.parallel_session_enabled,obj.raw_session,...
+                obj.perf_monitor,obj.cmd_window,options);
             
             if options.use_parallel
                 obj.output_data_handler = daq2.parallel_output_data_handler(...
@@ -161,9 +97,7 @@ classdef session < handle
             end
             
             %Listeners
-            %------------------------------------
-            %- Writing handled in output_data_handler
-            %- Reading in input_data_handler
+            %-----------------------------------------------------
             obj.raw_session.addListener('ErrorOccurred',@obj.errorHandlerCallback);
         end
     end
@@ -183,7 +117,7 @@ classdef session < handle
             %   --------
             %   fs = 10000;
             %   pulse_width_us = 200;
-            %   waveform = daq2.basic_stimulator.getBiphasicWaveform(fs,pulse_width_us) 
+            %   waveform = daq2.basic_stimulator.getBiphasicWaveform(fs,pulse_width_us)
             %   stim_fcn = @daq2.basic_stimulator
             %   s = struct;
             %   %Add 0.5 seconds of data every time we run
@@ -197,14 +131,14 @@ classdef session < handle
             obj.output_data_handler.addStimulator(stim_fcn,s)
         end
         function updateStimParams(obj,s)
-            obj.output_data_handler.updateStimParams(s); 
+            obj.output_data_handler.updateStimParams(s);
         end
         function queueMoreData(obj,n_seconds_add)
             obj.output_data_handler.queueMoreData(n_seconds_add);
         end
     end
     
-  	%Control Methods ======================================================
+    %Control Methods ======================================================
     methods
         function startBackground(obj,varargin)
             %
@@ -214,7 +148,7 @@ classdef session < handle
             %   ---------------
             %   trial_id :
             %   save_suffix :
-            %   save_prefix : 
+            %   save_prefix :
             
             in.trial_id = [];
             in.save_suffix = '';
@@ -238,13 +172,17 @@ classdef session < handle
         function abort(obj,ME)
             obj.iplot = [];
             obj.cmd_window.logErrorMessage(ME.message);
-            %I don't think this is needed if the DAQ is throwing the error
+            %I don't think we need to stop the DAQ if the DAQ is throwing
+            %the error.
             %
-            %I keep getting:
-            %identifier: 'daq:Session:stopDidNotComplete'
+            %I keep getting the following error:
+            %
+            %    identifier: 'daq:Session:stopDidNotComplete'
             %       message: 'Internal Error: The hardware did not report that it stopped before the timeout elapsed.'
             %obj.raw_session.stop();
+            
             obj.output_data_handler.stop();
+            
             %Note that we are aborting, not just stopping
             obj.input_data_handler.abort(ME);
         end
@@ -275,7 +213,7 @@ classdef session < handle
             %
             %   See Also
             %   --------
-            %  	daq2.input_data_handler>plotDAQData 
+            %  	daq2.input_data_handler>plotDAQData
             
             iplot = obj.input_data_handler.plotDAQData(varargin{:});
             obj.iplot = iplot;
@@ -284,18 +222,20 @@ classdef session < handle
             xy_data = obj.input_data_handler.getXYData(name);
         end
         function saveData(obj,name,data)
+            %
+            %   Save data to the current data file.
             obj.input_data_handler.saveData(name,data);
         end
-%         function addNonDaqData(obj,name,data)
-%             %
-%             %   Does 2 things:
-%             %   1) Saves the data to disk
-%             %   2) Keeps it in memory for later use and retrieval
-%             
-%             error('not yet implemented')
-%             
-%             obj.input_data_handler.addNonDaqData(name,data);
-%         end
+        %         function addNonDaqData(obj,name,data)
+        %             %
+        %             %   Does 2 things:
+        %             %   1) Saves the data to disk
+        %             %   2) Keeps it in memory for later use and retrieval
+        %
+        %             error('not yet implemented')
+        %
+        %             obj.input_data_handler.addNonDaqData(name,data);
+        %         end
         function addNonDaqXYData(obj,name,y_data,x_data)
             %
             %   Does 2 things:
@@ -328,13 +268,95 @@ classdef session < handle
             
             %Call user first before we clean up non-DAQ calls ...
             if ~isempty(obj.error_cb)
-               obj.error_cb(ME); 
+                obj.error_cb(ME);
             end
             
             obj.abort(ME);
         end
     end
     
+    
+end
+
+function h__initParallelPool(obj,MAX_HW_STARTUP_TIME)
+%
+%
+%   TODO: Document what we need to do ...
+
+MIN_TIME_SHOW_HW_MSG = 1; %second
+
+if obj.parallel_session_enabled
+    n_workers_needed = 2;
+else
+    n_workers_needed = 1;
+end
+
+%Start the parallel pool
+%------------------------------------------------------
+current_pool = gcp('nocreate');
+if isempty(current_pool)
+    obj.cmd_window.logMessage('Staring parallel pool for daq2 code')
+    current_pool = gcp;
+    obj.cmd_window.logMessage('Parallel pool initialized')
+end
+
+%Retrieve all DAQ HW info
+%-------------------------------------------------------
+%- This can be really slow
+%- This is only used when we are running the DAQ session on a parallel
+%worker
+if obj.parallel_session_enabled
+    %TODO: Ideally we would be able to choose workers ...
+    %This might need to be adjusted ...
+    fh = @daq2.utils.initDAQInfo;
+    f = parfevalOnAll(gcp,fh,0);
+    h_tic = tic;
+    hw_loading_msg_shown = false;
+    while (toc(h_tic) < MAX_HW_STARTUP_TIME && ~strcmp(f.State,'finished'))
+        if toc(h_tic) > MIN_TIME_SHOW_HW_MSG && ~hw_loading_msg_shown
+            obj.cmd_window.logMessage('Parallel processes are initializing Generic Matlab DAQ Info')
+            hw_loading_msg_shown = true;
+        end
+        pause(0.1);
+    end
+    
+    if hw_loading_msg_shown
+        obj.cmd_window.logMessage('Done loading generic DAQ Info')
+    end
+end
+
+
+%# of workers check
+%--------------------------------------------------------------------------
+if current_pool.NumWorkers < n_workers_needed
+    %TODO: Provide more info
+    error('Invalid # of workers in parallel pool')
+end
+
+running_futures = current_pool.FevalQueue.RunningFutures;
+if ~isempty(running_futures)
+    %Stop any that are related to this code ...
+    %
+    %Note this means we can't run two sessions at once
+    fcn_handles = {running_futures.Function};
+    fcn_strings = cellfun(@(x) func2str(x),fcn_handles,'un',0);
+    
+    mask = ismember(fcn_strings,...
+        {'daq2.input.parallel_data_writer_worker',...
+        'daq2.parallel_session_worker'});
+    for i = 1:length(running_futures)
+        if mask(i)
+            cancel(running_futures(i));
+        end
+    end
+    
+    %After possibly stopping some, check if we are ok
+    running_futures = current_pool.FevalQueue.RunningFutures;
+    n_free = current_pool.NumWorkers - length(running_futures);
+    if n_free < n_workers_needed
+        error('Invalid # of FREE workers in parallel pool')
+    end
+end
 
 end
 
