@@ -2,12 +2,14 @@ classdef parallel_raw_session < handle
     %
     %   Class:
     %   daq2.parallel_raw_session
+    %
+    %   See Also
     
     properties
         d0 = '------- Internal Props -------'
-        perf_mon
-        command_window
-        options
+        perf_mon        %daq2.perf_monitor
+        command_window  %Default: daq2.command_window
+        options         %NYI - send to parallel worker
         pool
         feval_future
         q_send

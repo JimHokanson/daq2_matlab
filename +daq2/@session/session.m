@@ -6,13 +6,13 @@ classdef session < handle
     %   This is the main class for the daq2 package
     
     properties
-        raw_session             %daq2.raw_session
-        perf_monitor            %
+        raw_session             %daq2.raw_session OR daq2.parallel_raw_session
+        perf_monitor            %daq2.perf_monitor
         input_data_handler      %daq2.input_data_handler
-        output_data_handler     %daq2.output_data_handler
-        options
-        recorded_data
-        parallel_session_enabled
+        output_data_handler     %daq2.output_data_handler OR daq2.parallel_output_data_handler
+        options                 %daq2.session.session_options
+
+        parallel_session_enabled %logical
         
         cmd_window  %Default: daq2.command_window
         %Interface:
@@ -20,7 +20,10 @@ classdef session < handle
         %   logError(string,formmatting_varargin)
         iplot %interactive_plot
         
+        %TODO: Expose via set method
         error_cb
+        %This can be set by the user. It gets called when
+        %a daq error occurs ...
     end
     
     properties (Dependent)

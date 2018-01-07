@@ -1,11 +1,14 @@
 classdef parallel_output_data_handler < handle
     %
+    %   Class:
+    %   daq2.parallel_output_data_handler
     %
-    %   Placehold for session code. This doesn't currently
-    %   do anything except swallow method calls.
+    %   See Also
+    %   --------
+    %   daq2.parallel_raw_session
     
     properties
-      	raw_session
+      	raw_session   %daq2.parallel_raw_session
         perf_mon
         cmd_window
     end
@@ -20,15 +23,17 @@ classdef parallel_output_data_handler < handle
             obj.cmd_window = cmd_window;
         end
         function initForStart(obj)
+            %Nothing needed
         end
         function stop(obj)
-            
+            %Nothing needed
         end
+    end
+    %Stim control methods =================================================
+    methods
+        %These calls only work with the parallel_raw_session, not the 
+        %standard raw_session class
        	function addStimulator(obj,stim_fcn,params)
-%             fs = obj.raw_session.rate;
-%             min_queue_samples = obj.raw_session.write_cb_samples;
-%             obj.stimulator = stim_fcn(fs,min_queue_samples,params);
-            
             obj.raw_session.addStimulator(stim_fcn,params);
         end
         function queueMoreData(obj,n_seconds_add)
