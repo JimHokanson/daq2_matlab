@@ -1,6 +1,14 @@
 function parallel_session_worker(type,q_send)
 %
-%   daq2.parallel_session_worker(q_send)
+%   daq2.parallel_session_worker(type,q_send)
+%
+%   See Also
+%   --------
+%   daq2.parallel_raw_session
+
+%This call is slow ...
+%Needs to be done once ...
+%hw = daq.HardwareInfo.getInstance()
 
 %Output Commands
 %----------------

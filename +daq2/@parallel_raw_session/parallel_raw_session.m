@@ -261,6 +261,9 @@ classdef parallel_raw_session < handle
             end
             
             if isempty(obj.p_daq_struct)
+                %How long this took ...
+                %We get a long wait due to slow daq enumeration ...
+                %elapsed_time = toc(obj.h_tic_send) - toc(obj.h_tic_recv)
                 error('Unable to receive session struct back from parallel function');
             end
             

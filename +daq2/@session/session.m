@@ -53,6 +53,8 @@ classdef session < handle
             %       See daq2.command_window for the necessary method
             %       interfaces.
             
+            MAX_HW_STARTUP_TIME = 15;
+            
             in = daq2.session.session_options();
             in = sl.in.processVarargin(in,varargin);
             options = in;
@@ -79,9 +81,31 @@ classdef session < handle
             %------------------------------------------------------
             current_pool = gcp('nocreate');
             if isempty(current_pool)
-                obj.command_window.logMessage('Staring parallel pool for daq2 code')
+                obj.cmd_window.logMessage('Staring parallel pool for daq2 code')
                 current_pool = gcp;
-                obj.command_window.logMessage('Parallel pool initialized')
+                obj.cmd_window.logMessage('Parallel pool initialized')
+            end
+            
+            %This is only needed when the DAQ will be run on a parallel
+            %worker
+            if obj.parallel_session_enabled
+                %Ideally we would be able to choose workers ...
+                %This might need to be adjusted ...
+                fh = @daq2.utils.initDAQInfo;
+                f = parfevalOnAll(gcp,fh,0);
+                h_tic = tic;
+                hw_loading_msg_shown = false;
+                while (toc(h_tic) < MAX_HW_STARTUP_TIME && ~strcmp(f.State,'finished'))
+                    if toc(h_tic) > 1 && ~hw_loading_msg_shown
+                        obj.cmd_window.logMessage('Parallel processes are initializing Generic Matlab DAQ Info')
+                        hw_loading_msg_shown = true;
+                    end
+                    pause(0.1);
+                end
+                
+                if hw_loading_msg_shown
+                    obj.cmd_window.logMessage('Done loading generic DAQ Info')
+                end
             end
             
             if current_pool.NumWorkers < n_workers_needed
