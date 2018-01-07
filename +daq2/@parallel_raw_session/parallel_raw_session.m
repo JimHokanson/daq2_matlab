@@ -21,6 +21,7 @@ classdef parallel_raw_session < handle
         h_tic_work_send
         
         p_daq_struct %Gets set with struct when requested ...
+        p_perf
         
         daq_props %struct
         %This is our local copy of all the daq props ...
@@ -307,42 +308,39 @@ classdef parallel_raw_session < handle
             
             switch s.cmd
                 case 'data_available'
+                    %.data - struct
                     if ~isempty(obj.data_available_cb)
-                        obj.data_available_cb(s.src,s.data);
+                        src = [];
+                        obj.data_available_cb(src,s.data);
                     end
-                case 'daq_error'
-                    %TODO: Add on to command window that we have a problem
-                    %from the daq
+                case {'daq_error' 'parallel_error'}
+                    %.ME - MException
+                    
+                    if strcmp(s.cmd,'error')
+                        m1 = 'Received code error from parallel session worker';
+                    else
+                        m1 = 'Received DAQ error from parallel session worker';
+                    end
+                    
                     obj.daq_props.IsRunning = false;
                     if ~isempty(obj.error_cb)
                         try
-                            ME = s.data.Error;
+                            obj.command_window.logErrorMessage('DAQ error received from parallel worker');
+                            ME = s.ME;
                             obj.error_cb(ME);
                             assignin('base','last_ME_from_cb1',ME);
+                            fprintf(2,'An error occurred, see "last_ME_from_cb1" in the base workspace\n');
                         catch ME
                         	assignin('base','last_ME_from_cb2',ME);
                             fprintf(2,'An error occurred, see "last_ME_from_cb2" in the base workspace\n');
+                            obj.command_window.logErrorMessage('Code error in daq2.parallel_raw_session');
                         end
                     else
-                        error('DAQ ERROR occurred')
+                        obj.command_window.logErrorMessage(ME.message);
                     end
-                case 'error'
-                    %TODO: Add on to command window that we have a problem
-                    %from the parallel code ...
-                    obj.daq_props.IsRunning = false;
-                    if ~isempty(obj.error_cb)
-                        try
-                            ME = s.data;
-                            obj.error_cb(s.data);
-                            assignin('base','last_ME_from_cb1',ME);
-                        catch ME
-                            assignin('base','last_ME_from_cb2',ME);
-                            fprintf(2,'An error occurred, see "last_ME_from_cb2" in the base workspace\n');
-                        end
-                    else
-                        error('Parallel code error occurred')
-                    end
-                    %?? throw otherwise?????    
+                case 'perf'
+                    %.data - struct
+                    obj.p_perf = s.data;
                 case 'struct'
                     obj.p_daq_struct = s.data;
                 otherwise
