@@ -39,6 +39,7 @@ classdef input_data_handler < handle
         %disk
         
         avg_data
+        daq_recording = false
     end
     
     methods
@@ -76,6 +77,7 @@ classdef input_data_handler < handle
                 trial_id,save_prefix,save_suffix);
             
             obj.read_cb = obj.raw_session.read_cb;
+            obj.daq_recording = true;
         end
         function iplot = plotDAQData(obj,varargin)
             %
@@ -109,8 +111,7 @@ classdef input_data_handler < handle
             %
             %   saveData(obj,name,data)
             
-            %This logic is not obvious - should be => if ~obj.recording ...
-            if isempty(obj.acquired_data)
+            if ~obj.daq_recording
                 obj.cmd_window.logErrorMessage(...
                     'Unable to add non-daq data when not recording')
                 return
@@ -126,7 +127,7 @@ classdef input_data_handler < handle
         % %             error('Not yet implemented')
         % %         end
         function xy_data = getXYData(obj,name)
-            if isempty(obj.acquired_data)
+            if ~obj.daq_recording
                 obj.cmd_window.logErrorMessage(...
                     'Unable to add non-daq xy data when not recording')
                 return
@@ -134,7 +135,7 @@ classdef input_data_handler < handle
             xy_data = obj.acquired_data.getXYData(name);
         end
         function addNonDaqXYData(obj,name,y_data,x_data)
-            if isempty(obj.acquired_data)
+            if ~obj.daq_recording
                 obj.cmd_window.logErrorMessage(...
                     'Unable to add non-daq xy data when not recording')
                 return
@@ -142,14 +143,14 @@ classdef input_data_handler < handle
             obj.acquired_data.addNonDaqXYData(name,y_data,x_data);
             
             %This would be better as a 2 column variable ...
-            %- need to update data writer ...
+            %- would need to update data writer ...
             obj.data_writer.addSamples(sprintf('%s__x',name),x_data);
             obj.data_writer.addSamples(sprintf('%s__y',name),y_data);
         end
     end
     methods
         function abort(obj,ME)
-            %???? Do we want to close the plotting figure?????
+            obj.daq_recording = false;
             delete(obj.iplot_listen);
             obj.iplot = [];
             obj.data_writer.closerWriterWithError(ME);
@@ -157,7 +158,7 @@ classdef input_data_handler < handle
             obj.data_writer = [];
         end
         function stop(obj)
-            %%???? Do we want to close the plotting figure?????
+            obj.daq_recording = false;
             delete(obj.iplot_listen);
             obj.iplot = [];
             obj.data_writer.closeWriter();
@@ -223,25 +224,32 @@ classdef input_data_handler < handle
             %
             
             %TODO: Log performance
-            
-            %Format
-            %- matrix [n_samples_acquired x n_channels]
-            input_data = event.Data;
-            
-            %decimated_data is a cell array of arrays
-            decimated_data = obj.decimation_handler.getDecimatedData(input_data);
-            
-            obj.avg_data = cellfun(@mean,decimated_data);
-            
-            obj.acquired_data.addDAQData(decimated_data);
-            obj.data_writer.addDAQSamples(decimated_data);
-            
-            if ~isempty(obj.iplot)
-                obj.iplot.dataAdded(obj.acquired_data.daq_tmax,obj.avg_data);
-            end
-            
-            if ~isempty(obj.read_cb)
-                obj.read_cb(source,event);
+            try
+                %Format
+                %- matrix [n_samples_acquired x n_channels]
+                input_data = event.Data;
+
+                %decimated_data is a cell array of arrays
+                decimated_data = obj.decimation_handler.getDecimatedData(input_data);
+
+                obj.avg_data = cellfun(@mean,decimated_data);
+
+                obj.acquired_data.addDAQData(decimated_data);
+                obj.data_writer.addDAQSamples(decimated_data);
+
+                if ~isempty(obj.iplot)
+                    obj.iplot.dataAdded(obj.acquired_data.daq_tmax,obj.avg_data);
+                end
+
+                if ~isempty(obj.read_cb)
+                    obj.read_cb(source,event);
+                end
+            catch ME
+                if obj.daq_recording
+                    rethrow(ME)
+                end
+                %We expect some errors may occur due to the async
+                %nature of the acquisition relative to stopping the DAQ
             end
         end
     end

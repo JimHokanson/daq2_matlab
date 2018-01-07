@@ -14,7 +14,6 @@ function parallel_session_worker(type,q_send)
 
 %Options ...
 %----------------------
-LOOP_PAUSE_TIME = 0.1;
 
 
 %- 'struct' get session props (return struct)

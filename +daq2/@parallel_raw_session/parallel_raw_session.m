@@ -302,16 +302,29 @@ classdef parallel_raw_session < handle
             %
             %   See Also:
             %   daq2.parallel_session_worker
+            %
+            %   IMPORTANT: Any errors thrown here or in the callers via
+            %   error() are transformed into warnings and become really
+            %   hard to debug. This is why some commands have been
+            %   wrapped with try/catch blocks ...
             
             obj.h_tic_recv = tic;
             obj.h_tic_work_send = s.send_time;
             
             switch s.cmd
                 case 'data_available'
-                    %.data - struct
-                    if ~isempty(obj.data_available_cb)
-                        src = [];
-                        obj.data_available_cb(src,s.data);
+                    %   Data received from the DAQ
+                    %
+                    %   .data - struct
+                    try
+                        if ~isempty(obj.data_available_cb)
+                            src = [];
+                            obj.data_available_cb(src,s.data);
+                        end
+                    catch ME
+                        assignin('base','last_ME_from_cb3',ME);
+                        fprintf(2,'An error occurred, see "last_ME_from_cb3" in the base workspace\n');
+                        obj.command_window.logErrorMessage('Code error in daq2.parallel_raw_session');
                     end
                 case {'daq_error' 'parallel_error'}
                     %.ME - MException
