@@ -322,11 +322,11 @@ classdef parallel_raw_session < handle
                         m1 = 'Received DAQ error from parallel session worker';
                     end
                     
+                    ME = s.ME;
                     obj.daq_props.IsRunning = false;
                     if ~isempty(obj.error_cb)
                         try
-                            obj.command_window.logErrorMessage('DAQ error received from parallel worker');
-                            ME = s.ME;
+                            obj.command_window.logErrorMessage(m1);                            
                             obj.error_cb(ME);
                             assignin('base','last_ME_from_cb1',ME);
                             fprintf(2,'An error occurred, see "last_ME_from_cb1" in the base workspace\n');
@@ -482,7 +482,7 @@ classdef parallel_raw_session < handle
         function queueMoreData(obj,n_seconds_add)
             s = struct;
             s.cmd = 'q_data';
-            s.data = n_seconds_add;
+            s.n_seconds_add = n_seconds_add;
             h__send(obj,s);
         end
         function updateStimParams(obj,s)
@@ -493,22 +493,26 @@ classdef parallel_raw_session < handle
         end
     end
     
-    %Debugging ===============
+    %Debugging ===========================================
     methods
         function requestSessionStruct(obj)
             h__sendCmd(obj,'struct');
+        end
+        function requestPerformanceStruct(obj)
+            h__sendCmd(obj,'perf');
         end
     end
 end
 
 function h__sendParam(obj,param,value)
     s = struct;
-    s.cmd = 'update_prop';
+    s.cmd = 'update_daq_prop';
     s.name = param;
     s.value = value;
     h__send(obj,s);
-    obj.daq_props.(param) = value;
     
+    %Log locall as well
+    obj.daq_props.(param) = value;
 end
 
 function h__sendCmd(obj,cmd)
@@ -518,6 +522,8 @@ function h__sendCmd(obj,cmd)
 end
 
 function h__send(obj,s)
+%
+%   All sends to the worker should come through here ...
 obj.h_tic_send = tic;
 if isempty(obj.feval_future.Error)
     obj.q_send.send(s);
@@ -527,12 +533,5 @@ elseif ~obj.process_error_thrown
         obj.feval_future.Error.message);
     obj.process_error_thrown = true;
 end
-end
-
-function h__updateProp(obj,name,value)
-
-end
-function h__getProp(obj,name,value)
-
 end
 

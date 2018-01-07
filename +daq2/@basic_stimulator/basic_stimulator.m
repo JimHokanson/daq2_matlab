@@ -206,7 +206,9 @@ classdef basic_stimulator < handle
                 obj.amp = s.amp;
                 h__setRate(obj,s.rate)
             elseif s.mode == 2
-                
+                %TODO: We may wish to make this dynamic ...
+                %i.e. populate a buffer and populate it out over time
+                %- this would allow for interuppting the buffer
                 
                 %Gen pulse times (& amps for ramp up)
                 %---------------------------------------------

@@ -5,28 +5,18 @@ function parallel_session_worker(type,q_send)
 %   See Also
 %   --------
 %   daq2.parallel_raw_session
+%   daq2.utils.initDAQInfo
+%   daq2.output.null_stim
+%   daq2.basic_stimulator
+%   
+%
+%   TODO: Move decimation to here ...
 
-%Received Commands
-%---------------------------
-%- 'add_analog_input'
-%       .id
-%       .port
-%       .type
-%       .other - (optional) prop-value pair cell array
-%- 'add_analog_output'
-%       .id
-%       .port
-%       .type
-%- 'update_prop' update prop
-%       .name - prop name
-%       .value - prop value
-%- 'start' - start session
-%- 'stop'  - stop session
-%- 'construct_stim' - construct stim
-%       .fcn - function handle
-%       .data - data to pass to function
-%- 'update_stim' - update stim params
-%       .data - anything ...
+%Options ...
+%----------------------
+LOOP_PAUSE_TIME = 0.1;
+
+
 %- 'struct' get session props (return struct)
 %- 'q_data'
 %       .data - n seconds to add
@@ -41,36 +31,51 @@ q_send.send(q_recv);
 try
     
     %State variables
-    %---------------
+    %-------------------------------
     stim = daq2.output.null_stim;
     is_running = false;
     n_analog_inputs = 0;
     n_analog_outputs = 0;
     n_loops = 0;
     n_pauses = 0;
+    loop_I = 0;
+    N_LOOP = 1e5;
+    loop_etimes = zeros(1,N_LOOP);
+    loop_types = zeros(1,N_LOOP);
+    loop_is_full = false;
     
-    %1 Initialize session ...
-    %------------------------------------------
+    %1 Initialize session with listeners
+    %----------------------------------------------------------------------
+    %DAQ props and channels are modified below with commands from client
+    
+    log = daq2.parallel.parallel_session_log;
+    
     session = daq.createSession(type);
     session.addlistener('DataAvailable',...
-        @(src,event)h__dataAvailable(src,event,q_send));
+        @(src,event)h__dataAvailable(event,q_send,log));
     session.addlistener('ErrorOccurred',...
-        @(src,event)h__errorTriggered(src,event,q_send));
+        @(src,event)h__errorTriggered(event,q_send));
+    
     while (true)
         n_loops = n_loops + 1;
+        
+        h_tic = tic;
+        
         if is_running && n_analog_outputs && (session.ScansQueued < session.NotifyWhenScansQueuedBelow)
             data = stim.getData();
             if ~isempty(data)
                 session.queueOutputData(data);
             end
+            loop_type = 1;
         elseif q_recv.QueueLength > 0
             s = q_recv.poll();
             
             switch s.cmd
                 %Keep this first since it should be the most often
-                
                 %----------------------------------------------------------
                 case 'update_stim'
+                    %   Pass new parameters to the stimulator.
+                    %
                     %.data - this can be anything ...
                     data = stim.updateParams(is_running,s.data);
                     if ~isempty(data)
@@ -79,10 +84,12 @@ try
                     
                     %----------------------------------------------------------
                 case 'add_analog_input'
-                    %.id - device id
-                    %.port - daq_port
-                    %.type - measurement type
-                    %.other - prop/value pairs
+                    %   Add an analog input channel to the session
+                    %
+                    %   .id - device id
+                    %   .port - daq_port
+                    %   .type - measurement type
+                    %   .other - prop/value pairs
                     
                     [ch,idx] = session.addAnalogInputChannel(s.id,s.port,s.type);
                     
@@ -95,17 +102,22 @@ try
                     
                     %----------------------------------------------------------
                 case 'add_analog_output'
-                    %.id - device id
-                    %.port - daq port
-                    %.type - measurement type
+                    %   Add an analog output channel to the session
+                    %
+                    %   .id - device id
+                    %   .port - daq port
+                    %   .type - measurement type
                     
                     [ch,idx] = session.addAnalogOutputChannel(s.id,s.port,s.type);
                     n_analog_outputs = n_analog_outputs + 1;
                     
                     %----------------------------------------------------------
                 case 'construct_stim'
-                    %.stim_fcn - function handle for stimulator
-                    %.data - input structure to stimulator
+                    %   Construct the stimulator locally
+                    %
+                    %   .stim_fcn - function handle for stimulator
+                    %   .data - input structure to stimulator
+                    
                     fs = session.Rate;
                     min_queue_samples = session.NotifyWhenScansQueuedBelow;
                     fh = s.stim_fcn;
@@ -113,10 +125,18 @@ try
                     
                     %----------------------------------------------------------
                 case 'perf'
-                    %Create perf struct
+                    %   Create and return perf struct
                     p = struct;
                     p.n_pauses = n_pauses;
                     p.n_loops = n_loops;
+                    p.loop_etimes = loop_etimes;
+                    p.loop_types = loop_types;
+                    p.loop_I = loop_I;
+                    p.loop_is_full = loop_is_full;
+                    p.read_data_process_times = log.etimes_process;
+                    p.read_data_send_times = log.etimes_send;
+                    p.read_data_process_I = log.I1;
+                    p.reda_data_send_I = log.I2;
                     
                     s2 = struct;
                     s2.cmd = 'perf';
@@ -125,8 +145,12 @@ try
                     
                     %----------------------------------------------------------
                 case 'q_data'
-                    %.data - TODO: rename
-                    n_seconds_add = s.data;
+                    %   This is a direct call to the stimulator to queue
+                    %   more data
+                    %   
+                    %   .n_seconds_add
+                    
+                    n_seconds_add = s.n_seconds_add;
                     data = stim.getData(n_seconds_add);
                     if ~isempty(data)
                         session.queueOutputData(data);
@@ -138,7 +162,11 @@ try
                     
                     %----------------------------------------------------------
                 case {'struct' 'disp'}
+                    
+                    %Get session struct
                     temp = h__getSessionStruct(session);
+                    
+                    %Send reply back to client
                     s2 = struct;
                     s2.cmd = s.cmd;
                     s2.data = temp;
@@ -146,6 +174,7 @@ try
                     
                     %----------------------------------------------------------
                 case 'start'
+                    %- no fields besides cmd
                     data = stim.init();
                     if ~isempty(data)
                         session.queueOutputData(data);
@@ -155,25 +184,40 @@ try
                     
                     %----------------------------------------------------------
                 case 'stop'
+                    %- no fields besides cmd
                     is_running = false;
                     session.stop();
-                    %case 'update_stim'
-                    %   Now first since most frequent
-                    
                     %----------------------------------------------------------
-                case 'update_prop'
-                    %.name - prop name
-                    %.value -  prop value
+                case 'update_daq_prop'
+                    %   Update a property of the DAQ session
+                    %
+                    %   .name - prop name
+                    %   .value -  prop value
+                    
                     session.(s.name) = s.value;
-                    
-                    
                 otherwise
                     error('Unrecognized command')
             end
+            
+            loop_type = 2;
         else
             n_pauses = n_pauses + 1;
-            pause(0.1);
+            pause(LOOP_PAUSE_TIME);
+            loop_type = 3;
         end
+        
+        %Log loop values
+        %---------------------------------------------
+        loop_I = loop_I + 1;
+        
+        %Using a fixed-size buffer, if over start over at 1
+        if loop_I > N_LOOP
+            loop_I = 1;
+            loop_is_full = true;
+        end
+        etime = toc(h_tic);
+        loop_etimes(loop_I) = etime;
+        loop_types(loop_I) = loop_type;
     end
 catch ME
     h__sendError(q_send,ME)
@@ -204,10 +248,26 @@ s.Channels = [];
 s.Connections = [];
 end
 
-function h__dataAvailable(~,data,q_send)
+function h__dataAvailable(data,q_send,log)
+%
+%   Inputs
+%   ------
+%   log : daq2.parallel.parallel_session_log
+%
+
 %We need a try/catch because otherwise errors
 %are silent in the listener
+
+%   data:
+%     TriggerTime: 7.3705e+05
+%            Data: [1000×10 double]
+%      TimeStamps: [1000×1 double]
+%          Source: [1×1 daq.ni.Session]
+%       EventName: 'DataAvailable'
+
+
 try
+    h_tic = tic;
     s = struct;
     s.cmd = 'data_available';
     s.src = [];
@@ -223,14 +283,20 @@ try
     s2.Source = [];
     s2.EventName = data.EventName;
     s2.TriggerTime = data.TriggerTime;
-    
+
     s.data = s2;
+    
+    log.addProcessTime(toc(h_tic));
+    
+    h_tic = tic;
     h__send(q_send,s)
+    log.addSendTime(toc(h_tic));
+    
 catch ME
     h__sendError(q_send,ME)
 end
 end
-function h__errorTriggered(src,data,q_send)
+function h__errorTriggered(data,q_send)
 try
     s = struct;
     s.cmd = 'daq_error';
