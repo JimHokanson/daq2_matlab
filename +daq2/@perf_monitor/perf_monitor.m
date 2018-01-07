@@ -5,6 +5,7 @@ classdef perf_monitor
     
     properties
         cmd_window
+        
         %All Trial Based Properties?
         trial_duration
         
@@ -13,6 +14,7 @@ classdef perf_monitor
     
     methods
         function obj = perf_monitor(cmd_window)
+            obj.cmd_window = cmd_window;
         end
     end
 end
