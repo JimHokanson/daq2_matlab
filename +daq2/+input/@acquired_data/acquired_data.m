@@ -20,6 +20,8 @@ classdef acquired_data < handle
         perf_mon
         cmd_window
         
+        short_names
+        
         daq_entries %struct
         %objects are field in the struct
         
@@ -74,7 +76,7 @@ classdef acquired_data < handle
             
             %TODO: Add on daq__ to avoid any name conflicts ...
             
-            short_names = {ai_chans.short_name};
+            obj.short_names = {ai_chans.short_name};
             disp_names = {ai_chans.name};
             fs = [ai_chans.fs];
             
@@ -88,7 +90,7 @@ classdef acquired_data < handle
                 dt = 1/fs(i);
                 n_samples_init = fs(i)*options.default_trial_duration;
                 new_entry = big_plot.streaming_data(dt,n_samples_init,'name',disp_names{i});
-                obj.daq_entries.(short_names{i}) = new_entry;
+                obj.daq_entries.(obj.short_names{i}) = new_entry;
                 temp{i} = new_entry;
             end
             obj.daq_entries_array = [temp{:}];
@@ -100,9 +102,7 @@ classdef acquired_data < handle
             %   TODO: This is a work in progress ...
             %
             %
-            
-            %JAH: Not yet rewritten for DAQ2
-            
+                        
 % %             %Default plot width ??????
 % %             in.width_s = 10;
 % %             in = sl.in.processVarargin(in,varargin);
@@ -115,16 +115,12 @@ classdef acquired_data < handle
                 plotBig(obj.daq_entries_array(i));
             end
             
-            %This relies on fieldnames (structs) keeping fields ordered so 
-            %that the names are in the correct order
-            
             names = fieldnames(obj.daq_entries);
-            names = regexprep(names,'_','\n');
+            %names = regexprep(names,'_','\n');
             iplot = interactive_plot(f,ax,...
                 'streaming',true,...
                 'axes_names',names,...
                 'comments',true);
-            
             
         end
 %         function rec_data_entry = initNonDaqEntry(obj,name,fs,n_seconds_init)
