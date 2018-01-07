@@ -463,7 +463,7 @@ classdef parallel_raw_session < handle
             temp = obj.chans(obj.type == 1);
             ai_chans = [temp{:}];
         end
-        function devices = getAvailableDevices(obj)
+        function devices = getAvailableDevices(obj) %#ok<MANU>
             %Note this is not specific to the session
             %and thus we don't need to ask the parallel worker
             devices = daq.getDevices();
@@ -500,6 +500,28 @@ classdef parallel_raw_session < handle
         end
         function requestPerformanceStruct(obj)
             h__sendCmd(obj,'perf');
+        end
+        function summarizePerfomance(obj)
+           obj.p_perf = [];
+           obj.requestPerformanceStruct();
+           pause(3);
+           if isempty(obj.p_perf)
+               error('Code not yet implemented to handle long delay in struct retrieval')
+           end
+           p = obj.p_perf;
+           figure
+           I = p.loop_I;
+           ax(1) = subplot(4,1,1);
+           plot(p.loop_etimes(1:I));
+           title('Elapsed time in worker loop')
+           ax(2) = subplot(4,1,2);
+           plot(p.loop_types(1:I))
+           title('Loop types: 1=queue, 2ish=cmd, 3=pause, 4=start, 5=stop')
+           ax(3) = subplot(4,1,3);
+           plot(p.read_data_process_times(1:p.read_data_process_I));
+           ax(4) = subplot(4,1,4);
+           plot(p.read_data_process_times(1:p.read_data_send_I));
+           linkaxes(ax(1:2),'x');
         end
     end
 end
