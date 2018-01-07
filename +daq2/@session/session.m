@@ -213,7 +213,7 @@ classdef session < handle
             %
             %   See Also
             %   --------
-            %  	daq2.input_data_handler>plotDAQData
+            %   daq2.input.acquired_data>plotDAQData
             
             iplot = obj.input_data_handler.plotDAQData(varargin{:});
             obj.iplot = iplot;
