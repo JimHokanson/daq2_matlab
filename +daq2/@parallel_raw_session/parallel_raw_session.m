@@ -48,6 +48,8 @@ classdef parallel_raw_session < handle
     properties
         d1 = '--------- DAQ2 Props -------'
         chans = {}
+        %Added channels
+        
         type
         
         %Format src,event
@@ -98,17 +100,11 @@ classdef parallel_raw_session < handle
             %have the max rate...
             h__sendParam(obj,'Rate',value)
             
-            %TODO: If read or write modes are auto or time
-            %we need to update params accordingly
-            %- like samples ...
-            %
-            %   Not sure of auto behavior ...
-            %   1/10 for read
-            %   1/2 for write
             switch obj.read_mode
                 case 'auto'
-                    %Adjust our internal # for samples
-                    %remote will auto adjust
+                    %Adjust our internal # for samples remote will auto adjust
+                    %
+                    %   Default = 0.1 seconds
                     obj.daq_props.NotifyWhenDataAvailableExceeds = round(1/10*value);
                 case 'time'
                     obj.read_cb_time = obj.user_read_time;
@@ -120,8 +116,9 @@ classdef parallel_raw_session < handle
             
             switch obj.write_mode
                 case 'auto'
-                    %Adjust our internal # for samples
-                    %remote will auto adjust
+                    %Adjust our internal # for samples remote will auto adjust
+                    %
+                    %   Default = 0.5 seconds
                     obj.daq_props.NotifyWhenScansQueuedBelow = round(1/2*value);
                 case 'time'
                     obj.write_cb_time = obj.user_write_time;
@@ -208,8 +205,6 @@ classdef parallel_raw_session < handle
         end 
     end
     
-
-    
     methods
         function obj = parallel_raw_session(type,perf_mon,command_window)
             %Max amount of time to wait for the parallel process
@@ -220,9 +215,6 @@ classdef parallel_raw_session < handle
             obj.perf_mon = perf_mon;
             obj.command_window = command_window;
             
-            %Requires parallel pool toolbox
-            %------------------------------
-            
             q_receive = parallel.pool.DataQueue;
             L1 = afterEach(q_receive, @(data) obj.initQSend(data));
             
@@ -231,8 +223,8 @@ classdef parallel_raw_session < handle
             fh = @daq2.parallel_session_worker;
             obj.feval_future = parfeval(gcp,fh,0,type,q_receive);
             
-            %now obtain the q
-            %----------------------------
+            %Now obtain the queue
+            %-------------------------------------------------
             %- we need to wait for the worker to start and for it to send
             %data back to us
             h_tic = tic;
@@ -249,11 +241,12 @@ classdef parallel_raw_session < handle
                 error('Received data not of expected type')
             end
             
+            %Move the callback to the main callback now that we have the 
             delete(L1);
             afterEach(q_receive, @(data) obj.receiveEvent(data));
             
             %Syncing DAQ Props
-            %----------------------------------------------
+            %--------------------------------------------------------------
             h__sendCmd(obj,'struct');
             
             h_tic = tic;
@@ -262,8 +255,7 @@ classdef parallel_raw_session < handle
             end
             
             if isempty(obj.p_daq_struct)
-                %How long this took ...
-                %We get a long wait due to slow daq enumeration ...
+                %We used to get a long wait due to slow daq enumeration ...
                 %elapsed_time = toc(obj.h_tic_send) - toc(obj.h_tic_recv)
                 error('Unable to receive session struct back from parallel function');
             end
@@ -276,13 +268,15 @@ classdef parallel_raw_session < handle
             obj.q_send = data;
         end
         %==================================================================
-        %   Receiving events
+        %                       Receiving events
         %==================================================================
         function receiveEvent(obj,s)
             %
-            %   Commands
-            %   --------
+            %   Commands from the parallel worker
+            %   ------------------------------------------------------
             %   'data_available' - data available
+            %
+            %           This will likely change ...
             %       .src = []
             %       .data = Modified data
             %   	TriggerTime: 7.3705e+05
@@ -290,14 +284,18 @@ classdef parallel_raw_session < handle
             %        TimeStamps: [1000×1 double]
             %            Source: []
             %         EventName: 'DataAvailable'
+            %
+            %
             %   'daq_error' - error from the DAQ
             %       .src = []
             %       .data = Modified Data
             %           Error: [1×1 MException]
             %          Source: []
             %       EventName: 'ErrorOccurred'
+            %
             %   'struct'
             %       .data - session as a struct
+            %   
             %   'error' - error in the parallel code caught by try/catch
             %       .data - ME
             %
