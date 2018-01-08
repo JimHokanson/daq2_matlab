@@ -6,6 +6,7 @@ classdef analog_output
     %   See Also
     %   ---------
     %   daq2.channel.spec.analog_input
+    %   daq2.channel.analog_output_channel
     
     properties
         short_name

@@ -5,7 +5,7 @@ classdef analog_output_channel
     %
     %   See Also
     %   --------
-    %   
+    %   daq2.channel.spec.analog_output
     
     properties
         h       %daq.ni.AnalogOutputVoltageChannel

@@ -3,10 +3,21 @@ classdef parallel_raw_session < handle
     %   Class:
     %   daq2.parallel_raw_session
     %
+    %   This class is a wrapper around the DAQ session. It however
+    %   does not hold an instance of the session, but rather communicates
+    %   with a parallel worker that holds the session.
+    %
+    %   The parallel worker allows for updating outputs independently
+    %   of the client.
+    %
     %   See Also
+    %   --------
+    %   daq2.raw_session
+    %   daq2.parallel_session_worker
     
     properties
         d0 = '------- Internal Props -------'
+        session_type
         perf_mon        %daq2.perf_monitor
         command_window  %Default: daq2.command_window
         options         %NYI - send to parallel worker
@@ -51,7 +62,7 @@ classdef parallel_raw_session < handle
         chans = {}
         %Added channels
         
-        type
+        chan_types
         
         %Format src,event
         read_cb
@@ -99,8 +110,12 @@ classdef parallel_raw_session < handle
             %TODO: We should sync the channel specs to this
             %i.e. if the rate changes, update any channels which
             %have the max rate...
+            
+            %Change the actual rate
             h__sendParam(obj,'Rate',value)
             
+            %Update the notification times based upon our rules
+            %------------------------------------------------------
             switch obj.read_mode
                 case 'auto'
                     %Adjust our internal # for samples remote will auto adjust
@@ -134,7 +149,7 @@ classdef parallel_raw_session < handle
         end
         function set.is_continuous(obj,value)
             h__sendParam(obj,'IsContinuous',value)
-        end
+        end        
         %get() read/write methods -------------------------------------
         function value = get.read_cb_time(obj)
             %TODO: Run error check on size ...
@@ -179,6 +194,10 @@ classdef parallel_raw_session < handle
         function value = get.is_running(obj)
             value = obj.daq_props.IsRunning;
         end
+        
+        %TODO: Implement these (Low priority)
+        %These are going to be difficult to get and will always
+        %have some noticeable delay
         function value = get.n_scans_acquired(obj)
             value = -1;
             %value = obj.h.ScansAcquired;
@@ -206,12 +225,14 @@ classdef parallel_raw_session < handle
         end 
     end
     
+    %Constructor ==========================================================
     methods
         function obj = parallel_raw_session(type,perf_mon,command_window)
             %Max amount of time to wait for the parallel process
             %to launch and to send a queue back to this process
             MAX_WAIT_PARALLEL_STARTUP = 5; %seconds
             
+            obj.session_type = type;
             obj.daq_props = struct;
             obj.perf_mon = perf_mon;
             obj.command_window = command_window;
@@ -263,6 +284,10 @@ classdef parallel_raw_session < handle
             
             obj.daq_props = obj.p_daq_struct;
         end
+    end
+    
+    %Core Methods =========================================================
+    methods
         function initQSend(obj,data)
             %Callback only for receiving q_send which allows
             %us to send messages to the worker
@@ -366,6 +391,18 @@ classdef parallel_raw_session < handle
             s.VERSION  = 1;
             s.STRUCT_DATE = now;
             s.TYPE = 'daq2.parallel_raw_session';
+            
+            %From raw_session ...
+            s.chans = cellfun(@struct,obj.chans,'un',0);
+            s.chan_types = obj.chan_types;
+            s.rate = obj.rate;
+            s.read_cb_time = obj.read_cb_time;
+            s.read_cb_samples = obj.read_cb_samples;
+            s.write_cb_time = obj.write_cb_time;
+            s.write_cb_samples = obj.write_cb_samples;
+            
+            %Not yet implemented locally
+%             s.summary = obj.summary;
         end
         function delete(obj)
             if ~isempty(obj.feval_future) && isvalid(obj.feval_future)
@@ -376,8 +413,76 @@ classdef parallel_raw_session < handle
     
     %Setup ================================================================
     methods
-        function [ch,idx] = addAnalogInput(obj,dev_id,daq_port,meas_type,other)
+       	function addChannelsBySpec(obj,chan_specs)
+            %
+            %   Inputs
+            %   ------
+            %   chan_specs : array or cell array of: 
+            %       - daq2.channel.spec.analog_input
+            %       - daq2.channel.spec.analog_output
+            %
             
+            if ~iscell(chan_specs)
+                chan_specs = num2cell(chan_specs);
+            end
+            
+            available_devices = obj.getAvailableDevices;
+            
+            for i = 1:length(chan_specs)
+                chan_spec = chan_specs{i};
+                chan = chan_spec.addToDAQ(obj,available_devices);
+                switch class(chan)
+                    case 'daq2.channel.analog_input_channel'
+                        obj.n_analog_inputs = obj.n_analog_inputs + 1;
+                        l_type = 1;
+                    case 'daq2.channel.analog_output_channel'
+                        obj.n_analog_outputs = obj.n_analog_outputs + 1;
+                        l_type = 2;
+                    otherwise
+                        error('Unrecognized class')
+                end
+                
+                obj.chans{end+1} = chan;
+                obj.chan_types(end+1) = l_type;
+            end
+        end
+        function addListener(obj,name,function_handle)
+            %
+            %
+            %   Listeners:
+            %   - 'DataAvailable'
+            %   - 'ErrorOccurred'
+            %   - 'DataRequired' - This can't be called because it is
+            %   directly linked inside the parallel worker. We could 
+            %   technically expose this to the user but it wouldn't
+            %   work all the well and isn't high priority.
+            %
+            %   Note: Currently we don't really have listener support, they
+            %   are really just callbacks, so only one function gets to
+            %   "listen"
+            
+            switch name
+                case 'DataAvailable'
+                    obj.data_available_cb = function_handle;
+                case 'ErrorOccurred'
+                    obj.error_cb = function_handle;
+                case 'DataRequired'
+                    error('Data required callback not supported')
+                otherwise
+                    error('Unrecognized listener type')
+            end
+            
+            %No need to modify the session, we just need to handle
+            %these when we receive the appropriate signals from the worker
+        end
+    end
+    
+    %Meant to be accessed via: addChannelsBySpec -=========================
+    methods (Hidden)
+        function [ch,idx] = addAnalogInput(obj,dev_id,daq_port,meas_type,other)
+            %
+            %
+            %   
             ch = [];
             idx = [];
             
@@ -402,28 +507,9 @@ classdef parallel_raw_session < handle
             
             h__send(obj,s)
         end
-        function addListener(obj,name,function_handle)
-            %
-            
-            switch name
-                case 'DataAvailable'
-                    obj.data_available_cb = function_handle;
-                case 'ErrorOccurred'
-                    obj.error_cb = function_handle;
-                case 'DataRequired'
-                    %If so, shouldn't use parallel session
-                    error('Data required callback not supported')
-                otherwise
-                    error('Unrecognized listener type')
-            end
-            
-            %No need to modify the session, we just need to handle
-            %these when we receive ...
-            %obj.h.addlistener(name,function_handle);
-        end
     end
     
-    %Control Methods ============================================
+    %Control Methods ======================================================
     methods
        	function startBackground(obj)
             h__sendCmd(obj,'start')
@@ -434,46 +520,16 @@ classdef parallel_raw_session < handle
             h__sendCmd(obj,'stop')
             obj.daq_props.IsRunning = false;
         end
-       	function output = getElapsedSessonTime(obj)
+    end
+    
+ 	%Queries ==============================================================
+    methods
+        function output = getElapsedSessonTime(obj)
            %This is currently not very accurate ... 
            output = toc(obj.h_start_tic);
         end
-    end
-    
- 	%Setup ================================================================
-    methods
-        function addChannelsBySpec(obj,chan_specs)
-            %
-            %   Form:
-            %   - array
-            %   - cell
-            
-            if ~iscell(chan_specs)
-                chan_specs = num2cell(chan_specs);
-            end
-            
-            available_devices = obj.getAvailableDevices;
-            
-            for i = 1:length(chan_specs)
-                chan_spec = chan_specs{i};
-                chan = chan_spec.addToDAQ(obj,available_devices);
-                switch class(chan)
-                    case 'daq2.channel.analog_input_channel'
-                        obj.n_analog_inputs = obj.n_analog_inputs + 1;
-                        l_type = 1;
-                    case 'daq2.channel.analog_output_channel'
-                        obj.n_analog_outputs = obj.n_analog_outputs + 1;
-                        l_type = 2;
-                    otherwise
-                        error('Unrecognized class')
-                end
-                
-                obj.chans{end+1} = chan;
-                obj.type(end+1) = l_type;
-            end
-        end
         function ai_chans = getAnalogInputChans(obj)
-            temp = obj.chans(obj.type == 1);
+            temp = obj.chans(obj.chan_types == 1);
             ai_chans = [temp{:}];
         end
         function devices = getAvailableDevices(obj) %#ok<MANU>
