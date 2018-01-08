@@ -19,10 +19,18 @@ classdef raw_session < handle
         %1 - analog input
         %2 - analog output
         %...
+        
+        read_mode = 'auto'
+        %- auto
+        %- time
+        %- samples
+        write_mode = 'auto'
+        h_start_tic
     end
     
     properties
         h
+        perf_mon
         cmd_window
     end
     
@@ -171,7 +179,7 @@ classdef raw_session < handle
     
     %Constructor ==========================================================
     methods
-        function obj = raw_session(type,cmd_window)
+        function obj = raw_session(type,perf_mon,cmd_window)
             %
             %   This should not be called directly. Call daq2.session
             %   instead
@@ -181,9 +189,11 @@ classdef raw_session < handle
             %   obj = daq2.raw_session('ni')
             
             %TODO: This might all be in parallel at some point
+            obj.perf_mon = perf_mon;
+            obj.cmd_window = cmd_window;
             
             obj.h = daq.createSession(type);
-            obj.cmd_window = cmd_window;
+            
         end
         function s = struct(obj)
             %TODO: Not all saved ...
@@ -214,14 +224,46 @@ classdef raw_session < handle
         end
     end
     
+    %Setup ============================================
+    methods
+        function [ch,idx] = addAnalogInput(obj,dev_id,daq_port,meas_type,other)
+            [ch,idx] = obj.h.addAnalogInputChannel(dev_id,daq_port,meas_type);
+            
+            for i = 1:2:length(other)
+                prop = other{i};
+                value = other{i+1};
+                ch.(prop) = value;
+            end            
+        end
+        function [ch,idx] = addAnalogOutput(obj,dev_id,daq_port,meas_type)
+            [ch,idx] = obj.h.addAnalogOutputChannel(dev_id,daq_port,meas_type);
+        end
+        function addListener(obj,name,function_handle)
+            %
+            %   Listeners
+            %   ---------
+            %   1) 'DataAvailable' - see input_data_handler
+            %   2) 'ErrorOccurred' - see daq2.session
+            %   3) 'DataRequired'
+            
+            obj.h.addlistener(name,function_handle);
+        end
+    end
+    
     %Control Methods
     %======================================================================
     methods
+        
         function startBackground(obj)
             obj.h.startBackground();
+            obj.h_start_tic = tic;
         end
         function stop(obj)
             obj.h.stop();
+        end
+        function output = getElapsedSessonTime(obj)
+           %This is currently not very accurate ... 
+           output = toc(obj.h_start_tic);
         end
     end
     

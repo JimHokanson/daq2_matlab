@@ -14,6 +14,9 @@ classdef output_data_handler < handle
         
         %Assume we've initialized elsewhere ...
         n_writes = 1;
+        
+        stimulator  %Type unknown
+        %TODO: Link to stimulator class requirements ...
     end
     
     methods
@@ -34,6 +37,7 @@ classdef output_data_handler < handle
             TIMER_TAG = 'daq_output_timer';
             
             %Killing of any timers that may have escaped 
+            %-------------------------------------------------------
             old_timers = timerfindall('Tag',TIMER_TAG);
             if ~isempty(old_timers)
                 for i = 1:length(old_timers)
@@ -49,10 +53,15 @@ classdef output_data_handler < handle
             if obj.raw_session.n_analog_outputs > 0
                 
                 %Is this ever ok????
-                if isempty(obj.raw_session.write_cb)
-                    error('No function specified to repopulate output')
+                if isempty(obj.stimulator)
+                    error('No stimulator added')
                 end
                 
+                %Initialize stimulator ...
+                data = obj.stimulator.init();
+                if ~isempty(data)
+                   obj.raw_session.queueOutputData(data); 
+                end
                 
                 %TODO: Period should be based on the refill rate
                 %Hardcoding low here
@@ -64,6 +73,22 @@ classdef output_data_handler < handle
                 start(obj.h_timer);
                 
                 obj.write_cb = obj.raw_session.write_cb;
+            end
+        end
+        function addStimulator(obj,stim_fcn,params)
+            fs = obj.raw_session.rate;
+            min_queue_samples = obj.raw_session.write_cb_samples;
+            obj.stimulator = stim_fcn(fs,min_queue_samples,params);
+        end
+        function queueMoreData(obj,n_seconds_add)
+            obj.n_writes = obj.n_writes + 1;
+         	data = obj.stimulator.getData(n_seconds_add);
+        	obj.raw_session.queueOutputData(data);
+        end
+        function updateStimParams(obj,s)
+            data = obj.stimulator.updateParams(obj.raw_session.is_running,s);
+            if ~isempty(data)
+               obj.raw_session.queueOutputData(data); 
             end
         end
         function stop(obj)
@@ -89,9 +114,8 @@ classdef output_data_handler < handle
                 if r.is_running && (r.n_scans_queued <= r.write_cb_samples)
                     
                     obj.n_writes = obj.n_writes + 1;
-                    
-                    %TODO: Add in performance logging ...
-                    feval(obj.write_cb,obj.raw_session.h,struct);
+                    data = obj.stimulator.getData();
+                    obj.raw_session.queueOutputData(data); 
                 end
             catch ME
                 assignin('base','last_ME_from_timer',ME);

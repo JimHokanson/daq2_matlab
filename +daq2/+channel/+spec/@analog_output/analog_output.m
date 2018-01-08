@@ -6,6 +6,7 @@ classdef analog_output
     %   See Also
     %   ---------
     %   daq2.channel.spec.analog_input
+    %   daq2.channel.analog_output_channel
     
     properties
         short_name
@@ -37,9 +38,7 @@ classdef analog_output
                 meas_type_local = obj.measurement_type;
             end
             
-            [ch,idx] = addAnalogOutputChannel(...
-                raw_session.h,...
-                device_id_local,...
+            [ch,idx] = raw_session.addAnalogOutput(device_id_local,...
                 obj.daq_port,...
                 meas_type_local);
             

@@ -2,6 +2,12 @@ classdef analog_input_channel
     %
     %   Class:
     %   daq2.channel.analog_input_channel
+    %
+    %   See Also
+    %   --------
+    %   daq2.raw_session
+    %   daq2.channel.spec.analog_input
+    %   daq2.channel.analog_output_channel
     
     %{
                   h: [1×1 daq.ni.AnalogInputVoltageChannel]
@@ -14,7 +20,7 @@ classdef analog_input_channel
     %}
     
     properties
-        h       %daq.ni.AnalogInputVoltageChannel
+        h       %daq.ni.AnalogInputVoltageChannel OR NULL
         short_name
         name
         fs
@@ -24,7 +30,7 @@ classdef analog_input_channel
     end
     
     methods
-        function obj = analog_input_channel(fs,dec_rate,h,daq_index,spec)
+        function obj = analog_input_channel(h,daq_index,fs,dec_rate,spec)
             obj.fs = fs;
             obj.decimation_rate = dec_rate;
             obj.h = h;
