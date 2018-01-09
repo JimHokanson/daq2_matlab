@@ -237,8 +237,16 @@ classdef input_data_handler < handle
                 obj.acquired_data.addDAQData(decimated_data);
                 obj.data_writer.addDAQSamples(decimated_data);
 
-                if ~isempty(obj.iplot)
-                    obj.iplot.dataAdded(obj.acquired_data.daq_tmax,obj.avg_data);
+                try
+                    if ~isempty(obj.iplot) && isvalid(obj.iplot)
+                        obj.iplot.dataAdded(obj.acquired_data.daq_tmax,obj.avg_data);
+                    end
+                catch ME
+                   %If  MATLAB:class:InvalidHandle then ok
+                   %otherwise rethrow ...
+                   if ~strcmp(Me.identifier,'MATLAB:class:InvalidHandle')
+                       rethrow(ME)
+                   end
                 end
 
                 if ~isempty(obj.read_cb)
