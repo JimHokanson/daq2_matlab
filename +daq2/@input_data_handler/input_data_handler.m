@@ -180,6 +180,8 @@ classdef input_data_handler < handle
                 return
              end
             obj.iplot.loadCalibrations(file_paths,varargin);
+            temp = obj.iplot.getCalibrationsSummary();
+            keyboard
         end
         function data = getAverageData(obj,varargin)
             %
@@ -251,6 +253,7 @@ classdef input_data_handler < handle
                 obj.acquired_data.addDAQData(decimated_data);
                 obj.data_writer.addDAQSamples(decimated_data);
 
+                %TODO: On figure close send out notify event
                 try
                     if ~isempty(obj.iplot) && isvalid(obj.iplot)
                         obj.iplot.dataAdded(obj.acquired_data.daq_tmax,obj.avg_data);
