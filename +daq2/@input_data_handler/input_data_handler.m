@@ -40,6 +40,11 @@ classdef input_data_handler < handle
         
         avg_data
         daq_recording = false
+        
+        %Calibrations
+        %------------
+        m
+        b
     end
     
     methods
@@ -88,12 +93,13 @@ classdef input_data_handler < handle
             %   --------
             %   daq2.input.acquired_data>plotDAQData
             
-            if isempty(obj.acquired_data)
+            if ~obj.daq_recording
                 obj.cmd_window.logErrorMessage(...
                     'Unable to add non-daq data when not recording')
                 iplot = [];
                 return
             end
+            
             iplot = obj.acquired_data.plotDAQData(varargin{:});
             obj.iplot = iplot;
             
@@ -129,7 +135,7 @@ classdef input_data_handler < handle
         function xy_data = getXYData(obj,name)
             if ~obj.daq_recording
                 obj.cmd_window.logErrorMessage(...
-                    'Unable to add non-daq xy data when not recording')
+                    'Unable to get non-daq xy data when not recording')
                 return
             end
             xy_data = obj.acquired_data.getXYData(name);
@@ -167,6 +173,14 @@ classdef input_data_handler < handle
         end
     end
     methods
+        function loadCalibrations(obj,file_paths,varargin)
+             if isempty(obj.i_plot) || ~isvalid(obj.i_plot)
+                obj.cmd_window.logErrorMessage(...
+                    'Unable to load calibrations when iplot is not open')
+                return
+             end
+            obj.iplot.loadCalibrations(file_paths,varargin);
+        end
         function data = getAverageData(obj,varargin)
             %
             %   TODO: Finish documenting function ...

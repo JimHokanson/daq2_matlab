@@ -201,11 +201,7 @@ classdef session < handle
             %   --------
             %   interactive_plot>loadCalibrations
             
-            if isempty(obj.iplot)
-                obj.cmd_window.logErrorMessage(...
-                    'Unable to load an calibration when no plot is present');
-            end
-            obj.iplot.loadCalibrations(file_paths,varargin)
+            obj.input_data_handler.loadCalibrations(file_paths,varargin)
         end
         function iplot = plotDAQData(obj,varargin)
             %
@@ -216,6 +212,9 @@ classdef session < handle
             %   daq2.input.acquired_data>plotDAQData
             
             iplot = obj.input_data_handler.plotDAQData(varargin{:});
+            
+            %TODO: I don't think we want to hang onto this here (only in
+            %the input_data_handler class)
             obj.iplot = iplot;
         end
         function xy_data = getXYData(obj,name)
