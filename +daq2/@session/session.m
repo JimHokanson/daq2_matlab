@@ -188,7 +188,7 @@ classdef session < handle
         end
     end
     
-    %Methods while running ================================================
+    %Plot methods =========================================================
     methods
         function loadCalibrations(obj,file_paths,varargin)
             %
@@ -216,6 +216,18 @@ classdef session < handle
             %TODO: I don't think we want to hang onto this here (only in
             %the input_data_handler class)
             obj.iplot = iplot;
+        end
+    end
+    
+    %Data Logging and Retrieval ===========================================
+    methods
+        function addComment(obj,comment_str)
+           %1) Add comment locally - NYI (need addNonDaqData)
+           %2) Add comment to plot (if open)
+           current_time = obj.raw_session.getElapsedSessonTime();
+           if ~isempty(obj.iplot)
+               obj.iplot.addComment(current_time,comment_string)
+           end
         end
         function xy_data = getXYData(obj,name)
             xy_data = obj.input_data_handler.getXYData(name);

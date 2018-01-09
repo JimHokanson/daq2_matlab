@@ -163,7 +163,7 @@ classdef parallel_raw_session < handle
             value = double(obj.daq_props.NotifyWhenScansQueuedBelow)/obj.daq_props.Rate;
         end
         function value = get.write_cb_samples(obj)
-            value = obj.h.NotifyWhenScansQueuedBelow;
+            value = double(obj.daq_props.NotifyWhenScansQueuedBelow);
         end
         %set() read/write methods -------------------------------------
         function set.read_cb_time(obj,value)
@@ -342,6 +342,8 @@ classdef parallel_raw_session < handle
                     %
                     %   .data - struct
                     try
+                        %   TriggerTime would be useful for ascertaining t
+                        %   = 0
                         if ~isempty(obj.data_available_cb)
                             src = [];
                             obj.data_available_cb(src,s.data);
@@ -526,6 +528,11 @@ classdef parallel_raw_session < handle
     methods
         function output = getElapsedSessonTime(obj)
            %This is currently not very accurate ... 
+           %
+           %    I think it could be if we link the start of the DAQ to
+           %    the processor time
+           %
+           %    
            output = toc(obj.h_start_tic);
         end
         function ai_chans = getAnalogInputChans(obj)

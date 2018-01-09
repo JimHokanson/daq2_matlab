@@ -253,17 +253,12 @@ classdef raw_session < handle
     %Control Methods
     %======================================================================
     methods
-        
         function startBackground(obj)
             obj.h.startBackground();
             obj.h_start_tic = tic;
         end
         function stop(obj)
             obj.h.stop();
-        end
-        function output = getElapsedSessonTime(obj)
-           %This is currently not very accurate ... 
-           output = toc(obj.h_start_tic);
         end
     end
     
@@ -310,6 +305,14 @@ classdef raw_session < handle
                 obj.chans{end+1} = chan;
                 obj.type(end+1) = l_type;
             end
+        end
+    end
+    
+    methods
+        function output = getElapsedSessonTime(obj)
+            error('Not yet implemented')
+            %=> I think this is the # of scans divided by the daq rate
+            
         end
         function ai_chans = getAnalogInputChans(obj)
             temp = obj.chans(obj.type == 1);
