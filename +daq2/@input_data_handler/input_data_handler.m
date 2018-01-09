@@ -81,6 +81,9 @@ classdef input_data_handler < handle
                 obj.raw_session,obj.perf_monitor,obj.cmd_window,obj.options,...
                 trial_id,save_prefix,save_suffix);
             
+            obj.m = ones(1,obj.acquired_data.n_chans);
+            obj.b = zeros(1,obj.acquired_data.n_chans);
+            
             obj.read_cb = obj.raw_session.read_cb;
             obj.daq_recording = true;
         end
@@ -174,15 +177,16 @@ classdef input_data_handler < handle
     end
     methods
         function loadCalibrations(obj,file_paths,varargin)
-             if isempty(obj.i_plot) || ~isvalid(obj.i_plot)
+             if isempty(obj.iplot) || ~isvalid(obj.iplot)
                 obj.cmd_window.logErrorMessage(...
                     'Unable to load calibrations when iplot is not open')
                 return
              end
-            obj.iplot.loadCalibrations(file_paths,varargin);
+            obj.iplot.loadCalibrations(file_paths,varargin{:});
             temp = obj.iplot.getCalibrationsSummary();
             obj.m = temp.m;
             obj.b = temp.b;
+            obj
         end
         function data = getAverageData(obj,varargin)
             %
@@ -191,9 +195,15 @@ classdef input_data_handler < handle
             %   Currently only returns the average from the last
             %   acquisition period
             %
+            %   Optional Inputs
+            %   ---------------
+            %   channel : ''
             %   as_vector : default true 
             %       If false returns as a struct where fields
             %       are the channels.
+            %   x_range : NYI
+            %   seconds_back : NYI
+            %   
             %
             %   Examples
             %   ---------
@@ -264,7 +274,7 @@ classdef input_data_handler < handle
                 catch ME
                    %If  MATLAB:class:InvalidHandle then ok
                    %otherwise rethrow ...
-                   if ~strcmp(Me.identifier,'MATLAB:class:InvalidHandle')
+                   if ~strcmp(ME.identifier,'MATLAB:class:InvalidHandle')
                        rethrow(ME)
                    end
                 end

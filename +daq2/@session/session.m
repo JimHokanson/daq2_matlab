@@ -201,7 +201,7 @@ classdef session < handle
             %   --------
             %   interactive_plot>loadCalibrations
             
-            obj.input_data_handler.loadCalibrations(file_paths,varargin)
+            obj.input_data_handler.loadCalibrations(file_paths,varargin{:})
         end
         function iplot = plotDAQData(obj,varargin)
             %
