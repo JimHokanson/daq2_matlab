@@ -181,7 +181,8 @@ classdef input_data_handler < handle
              end
             obj.iplot.loadCalibrations(file_paths,varargin);
             temp = obj.iplot.getCalibrationsSummary();
-            keyboard
+            obj.m = temp.m;
+            obj.b = temp.b;
         end
         function data = getAverageData(obj,varargin)
             %
@@ -249,6 +250,8 @@ classdef input_data_handler < handle
                 decimated_data = obj.decimation_handler.getDecimatedData(input_data);
 
                 obj.avg_data = cellfun(@mean,decimated_data);
+                %Calibrate averages
+                obj.avg_data = obj.avg_data.*obj.m + obj.b;
 
                 obj.acquired_data.addDAQData(decimated_data);
                 obj.data_writer.addDAQSamples(decimated_data);
