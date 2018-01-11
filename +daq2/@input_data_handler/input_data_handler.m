@@ -125,16 +125,18 @@ classdef input_data_handler < handle
                     'Unable to add non-daq data when not recording')
                 return
             end
+            
+            %Just saving, bypass acquired_data and save
             obj.data_writer.saveData(name,data);
         end
-        % %         function addNonDaqData(obj,name,data) %#ok<INUSD>
-        % %             if isempty(obj.acquired_data)
-        % %                 obj.cmd_window.logErrorMessage(...
-        % %                     'Unable to add non-daq data when not recording')
-        % %                 return
-        % %             end
-        % %             error('Not yet implemented')
-        % %         end
+        function addNonDaqData(obj,name,data) %#ok<INUSD>
+            if ~obj.daq_recording
+                obj.cmd_window.logErrorMessage(...
+                    'Unable to add non-daq data when not recording')
+                return
+            end
+            error('Not yet implemented')
+        end
         function xy_data = getXYData(obj,name)
             if ~obj.daq_recording
                 obj.cmd_window.logErrorMessage(...
@@ -186,7 +188,6 @@ classdef input_data_handler < handle
             temp = obj.iplot.getCalibrationsSummary();
             obj.m = temp.m;
             obj.b = temp.b;
-            obj
         end
         function data = getAverageData(obj,varargin)
             %
