@@ -24,7 +24,7 @@ classdef input_data_handler < handle
         raw_session  %daq2.raw_session OR daq2.parallel_raw_session
         perf_monitor
         cmd_window
-        options
+        options         %daq2.session.session_options
         
         %Objects for processing acquired data
         %------------------------------------
@@ -53,6 +53,10 @@ classdef input_data_handler < handle
             %
             %   obj = daq2.input_data_handler(is_parallel,raw_session,
             %           perf_monitor,cmd_window)
+            %
+            %   See Also
+            %   --------
+            %   daq2.session
             
             obj.is_parallel = is_parallel;
             obj.raw_session = raw_session;
@@ -73,8 +77,17 @@ classdef input_data_handler < handle
             %   save_suffix :
             %
             
-            obj.decimation_handler = daq2.input.decimation_handler(...
-                obj.raw_session,obj.perf_monitor);
+            if ~obj.is_parallel
+                error('Not yet implemented')
+%                  obj.raw_session = raw_session;
+%             obj.perf_monitor = perf_monitor;
+%             
+%             ai_chans = raw_session.getAnalogInputChans();
+            
+                obj.decimation_handler = daq2.input.decimation_handler(...
+                    obj.raw_session,obj.perf_monitor);
+            end
+            
             obj.acquired_data = daq2.input.acquired_data(...
                 obj.raw_session,obj.perf_monitor,obj.cmd_window,obj.options);
             obj.data_writer = daq2.input.data_writer(...
@@ -241,12 +254,17 @@ classdef input_data_handler < handle
             
             %TODO: Log performance
             try
-                %Format
-                %- matrix [n_samples_acquired x n_channels]
-                input_data = event.Data;
+                
+                if obj.is_parallel
+                    decimated_data = event.decimated_data;
+                else
+                    %Format
+                    %- matrix [n_samples_acquired x n_channels]
+                    input_data = event.Data;
 
-                %decimated_data is a cell array of arrays
-                decimated_data = obj.decimation_handler.getDecimatedData(input_data);
+                    %decimated_data is a cell array of arrays
+                    decimated_data = obj.decimation_handler.getDecimatedData(input_data);
+                end
 
                 obj.avg_data = cellfun(@mean,decimated_data);
 
