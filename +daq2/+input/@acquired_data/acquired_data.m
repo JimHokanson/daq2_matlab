@@ -149,10 +149,10 @@ classdef acquired_data < handle
         function addNonDaqData(obj,name,data)
             
         end
-        function initNonDaqXYData(obj,name,varargin)
-            %We can initialize on adding, we just don't get as much control
-           error('Not yet implemented')
-        end
+%         function initNonDaqXYData(obj,name,varargin)
+%             %We can initialize on adding, we just don't get as much control
+%            error('Not yet implemented')
+%         end
         function addNonDaqXYData(obj,name,y_data,x_data)
             %non_daq_xy_map
             

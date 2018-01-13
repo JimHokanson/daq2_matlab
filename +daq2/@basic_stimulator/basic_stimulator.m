@@ -267,7 +267,9 @@ classdef basic_stimulator < handle
                 end
                 
                 if isfield(s,'terminal_rate')
-                    obj.rate = s.terminal_rate;
+                    %TODO: Move this code to on setting rate
+                    h__setRate(obj,s.terminal_rate)
+                    %obj.rate = s.terminal_rate;
                 end
                 
             else

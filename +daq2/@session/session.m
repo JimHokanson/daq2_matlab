@@ -24,6 +24,9 @@ classdef session < handle
         error_cb
         %This can be set by the user. It gets called when
         %a daq error occurs ...
+        
+        comment_times
+        comment_strings = {}
     end
     
     properties (Dependent)
@@ -201,7 +204,7 @@ classdef session < handle
             %   --------
             %   interactive_plot>loadCalibrations
             
-            obj.input_data_handler.loadCalibrations(file_paths,varargin)
+            obj.input_data_handler.loadCalibrations(file_paths,varargin{:})
         end
         function iplot = plotDAQData(obj,varargin)
             %
@@ -221,11 +224,21 @@ classdef session < handle
     
     %Data Logging and Retrieval ===========================================
     methods
-        function addComment(obj,comment_str)
+        function addComment(obj,comment_string)
            %1) Add comment locally - NYI (need addNonDaqData)
            %2) Add comment to plot (if open)
            current_time = obj.raw_session.getElapsedSessonTime();
-           if ~isempty(obj.iplot)
+           
+           %This could be done better ...
+           obj.comment_times = [obj.comment_times current_time];
+           obj.comment_strings = [obj.comment_strings comment_string];
+           
+           s.times = obj.comment_times;
+           s.strings = obj.comment_strings;
+           
+           obj.saveData('comments',s);
+           
+           if ~isempty(obj.iplot) && isvalid(obj.iplot)
                obj.iplot.addComment(current_time,comment_string)
            end
         end
@@ -237,16 +250,14 @@ classdef session < handle
             %   Save data to the current data file.
             obj.input_data_handler.saveData(name,data);
         end
-        %         function addNonDaqData(obj,name,data)
-        %             %
-        %             %   Does 2 things:
-        %             %   1) Saves the data to disk
-        %             %   2) Keeps it in memory for later use and retrieval
-        %
-        %             error('not yet implemented')
-        %
-        %             obj.input_data_handler.addNonDaqData(name,data);
-        %         end
+        function addNonDaqData(obj,name,data)
+            %
+            %   Does 2 things:
+            %   1) Saves the data to disk
+            %   2) Keeps it in memory for later use and retrieval
+
+            obj.input_data_handler.addNonDaqData(name,data);
+        end
         function addNonDaqXYData(obj,name,y_data,x_data)
             %
             %   Does 2 things:

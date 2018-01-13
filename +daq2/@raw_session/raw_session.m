@@ -8,6 +8,7 @@ classdef raw_session < handle
     %   See Also
     %   --------
     %   daq2.session
+    %   daq2.parallel_raw_session
     
     properties 
         d0 = '----- Internal Objects ------'

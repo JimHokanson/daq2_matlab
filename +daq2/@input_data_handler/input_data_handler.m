@@ -94,6 +94,9 @@ classdef input_data_handler < handle
                 obj.raw_session,obj.perf_monitor,obj.cmd_window,obj.options,...
                 trial_id,save_prefix,save_suffix);
             
+            obj.m = ones(1,obj.acquired_data.n_chans);
+            obj.b = zeros(1,obj.acquired_data.n_chans);
+            
             obj.read_cb = obj.raw_session.read_cb;
             obj.daq_recording = true;
         end
@@ -135,16 +138,18 @@ classdef input_data_handler < handle
                     'Unable to add non-daq data when not recording')
                 return
             end
+            
+            %Just saving, bypass acquired_data and save
             obj.data_writer.saveData(name,data);
         end
-        % %         function addNonDaqData(obj,name,data) %#ok<INUSD>
-        % %             if isempty(obj.acquired_data)
-        % %                 obj.cmd_window.logErrorMessage(...
-        % %                     'Unable to add non-daq data when not recording')
-        % %                 return
-        % %             end
-        % %             error('Not yet implemented')
-        % %         end
+        function addNonDaqData(obj,name,data) %#ok<INUSD>
+            if ~obj.daq_recording
+                obj.cmd_window.logErrorMessage(...
+                    'Unable to add non-daq data when not recording')
+                return
+            end
+            error('Not yet implemented')
+        end
         function xy_data = getXYData(obj,name)
             if ~obj.daq_recording
                 obj.cmd_window.logErrorMessage(...
@@ -187,14 +192,15 @@ classdef input_data_handler < handle
     end
     methods
         function loadCalibrations(obj,file_paths,varargin)
-             if isempty(obj.i_plot) || ~isvalid(obj.i_plot)
+             if isempty(obj.iplot) || ~isvalid(obj.iplot)
                 obj.cmd_window.logErrorMessage(...
                     'Unable to load calibrations when iplot is not open')
                 return
              end
-            obj.iplot.loadCalibrations(file_paths,varargin);
+            obj.iplot.loadCalibrations(file_paths,varargin{:});
             temp = obj.iplot.getCalibrationsSummary();
-            keyboard
+            obj.m = temp.m;
+            obj.b = temp.b;
         end
         function data = getAverageData(obj,varargin)
             %
@@ -203,9 +209,15 @@ classdef input_data_handler < handle
             %   Currently only returns the average from the last
             %   acquisition period
             %
+            %   Optional Inputs
+            %   ---------------
+            %   channel : ''
             %   as_vector : default true 
             %       If false returns as a struct where fields
             %       are the channels.
+            %   x_range : NYI
+            %   seconds_back : NYI
+            %   
             %
             %   Examples
             %   ---------
@@ -267,6 +279,8 @@ classdef input_data_handler < handle
                 end
 
                 obj.avg_data = cellfun(@mean,decimated_data);
+                %Calibrate averages
+                obj.avg_data = obj.avg_data.*obj.m + obj.b;
 
                 obj.acquired_data.addDAQData(decimated_data);
                 obj.data_writer.addDAQSamples(decimated_data);
@@ -279,7 +293,7 @@ classdef input_data_handler < handle
                 catch ME
                    %If  MATLAB:class:InvalidHandle then ok
                    %otherwise rethrow ...
-                   if ~strcmp(Me.identifier,'MATLAB:class:InvalidHandle')
+                   if ~strcmp(ME.identifier,'MATLAB:class:InvalidHandle')
                        rethrow(ME)
                    end
                 end
