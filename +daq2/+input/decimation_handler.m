@@ -32,6 +32,7 @@ classdef decimation_handler < handle
         n_chans
     end
     
+    %Testing ==============================================================
     methods (Static)
         function runTest1()
             decimation_rates = [1 10 100];
@@ -43,7 +44,7 @@ classdef decimation_handler < handle
             profile on
             tic
             for k = 1:100
-                d = daq2.input.decimation_handler(10000,decimation_rates);
+                d = daq2.input.decimation_handler(decimation_rates);
                 I = unique(round((rand(1,5))*N));
                 
                 if I(1) == 1
@@ -84,7 +85,7 @@ classdef decimation_handler < handle
             profile on
             tic
             for k = 1:100
-                d = daq2.input.decimation_handler(10000,decimation_rates);
+                d = daq2.input.decimation_handler(decimation_rates);
                 I = 10000:10000:N;
                 
                 I(end) = N;
@@ -113,13 +114,14 @@ classdef decimation_handler < handle
         end
     end
     
+    %Constructor ==========================================================
     methods
-        function obj = decimation_handler(samples_per_read,decimation_rates)
+        function obj = decimation_handler(decimation_rates)
             %
             %   obj = daq2.input.decimation_handler(decimation_rates);
             
             
-            obj.samples_per_read = samples_per_read;
+            %obj.samples_per_read = samples_per_read;
             obj.decimation_rates = decimation_rates;
             
             obj.n_chans = length(obj.decimation_rates);

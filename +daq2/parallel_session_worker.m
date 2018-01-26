@@ -38,6 +38,9 @@ try
     n_loops = 0;
     n_pauses = 0;
     loop_I = 0;
+    
+    %When we overflow on this amount, we reset
+    %back to 1 rather than reallocating the loop variable
     N_LOOP = 1e5;
     loop_etimes = zeros(1,N_LOOP);
     loop_types = zeros(1,N_LOOP);
@@ -84,7 +87,12 @@ try
                     loop_type = 2.01;
                     %   Pass new parameters to the stimulator.
                     %
-                    %.data - this can be anything ...
+                    %.data - this can be anything, especially since
+                    %any stimulator may be defined
+                    %
+                    %   See Also
+                    %   daq2.basic_stimulator
+                     
                     data = stim.updateParams(is_running,s.data);
                     if ~isempty(data)
                         session.queueOutputData(data);
@@ -128,6 +136,12 @@ try
                     %
                     %   .stim_fcn - function handle for stimulator
                     %   .data - input structure to stimulator
+                    %
+                    %   The thought is that the stimulator might work
+                    %   more cleanly if constructed in this process, rather
+                    %   than passed through IPC. This may not be true and
+                    %   we could add an option for passing a stimulator
+                    %   directly to this process.
                     
                     fs = session.Rate;
                     min_queue_samples = session.NotifyWhenScansQueuedBelow;
@@ -137,7 +151,9 @@ try
                     %----------------------------------------------------------
                 case 'perf'
                     loop_type = 2.05;
-                    %   Create and return perf struct
+                    %   Create and return perf struct to main processs
+                    %
+                    %   Format may change ...
                     p = struct;
                     p.n_pauses = n_pauses;
                     p.n_loops = n_loops;
