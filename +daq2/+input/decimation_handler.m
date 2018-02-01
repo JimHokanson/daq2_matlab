@@ -2,11 +2,27 @@ classdef decimation_handler < handle
     %
     %   Class:
     %   daq2.input.decimation_handler
+    %
+    %   Returns decimated data where each decimated sample is computed
+    %   as the mean of all collected samples. For example, a decimation
+    %   rate of 2 would return the average of every 2 samples, thus the #
+    %   of output samples is 1/2 the # of input samples.
+    %
+    %   Usage
+    %   -----
+    %   decimation_rates = [1 10 100 2 5];
+    %   dec_handler = daq2.input.decimation_handler(decimation_rates)
+    %   not_done = false;
+    %   while (not_done)
+    %       %get new data
+    %       dec_data = dec_handler.getDecimatedData(new_daq_data)
+    %       %do something
+    %   end
     
     %{
+        Test Calls:
         daq2.input.decimation_handler.runTest1
         daq2.input.decimation_handler.runTest2
-    
     %}
     
     properties
@@ -53,7 +69,6 @@ classdef decimation_handler < handle
                 
                 I(end) = N;
                 
-                
                 dec_data1 = cell(1,3);
                 end_I = 0;
                 for i = 1:length(I)
@@ -90,7 +105,6 @@ classdef decimation_handler < handle
                 
                 I(end) = N;
                 
-                
                 dec_data1 = cell(1,3);
                 end_I = 0;
                 for i = 1:length(I)
@@ -119,6 +133,15 @@ classdef decimation_handler < handle
         function obj = decimation_handler(decimation_rates)
             %
             %   obj = daq2.input.decimation_handler(decimation_rates);
+            %
+            %   Inputs
+            %   ------
+            %   
+            %
+            %   Examples
+            %   --------
+            %   decimation_rates = [1 10 100 2 5];
+            %   obj = daq2.input.decimation_handler(decimation_rates)
             
             
             %obj.samples_per_read = samples_per_read;
@@ -144,9 +167,9 @@ classdef decimation_handler < handle
                 
             end
         end
-        
     end
     
+    %Decimation method  ===================================================
     methods
         function dec_data = getDecimatedData(obj,input_data)
             %
@@ -154,6 +177,14 @@ classdef decimation_handler < handle
             %   ------
             %   input_data : [samples x channels]
             %
+            %
+            %   Outputs
+            %   -------
+            %   dec_data : cell array of arrays
+            %       Each index corresponds to a channel. Not all channels
+            %       may return data as the decimation rate may require more
+            %       input samples before completing a full output sample.
+            %   
             
             
             dec_rates = obj.decimation_rates;

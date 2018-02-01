@@ -229,7 +229,7 @@ classdef input_data_handler < handle
             in.x_range = []; %NYI
             in.channel = '';
             in.as_vector = true;
-            in = sl.in.processVarargin(in,varargin);
+            in = daq2.sl.in.processVarargin(in,varargin);
             
             avg_local = obj.avg_data;
             if ~isempty(in.channel)

@@ -49,7 +49,7 @@ classdef analog_input
                 %TODO: Verify fs not exceeded
                 fs_local = obj.fs; 
                 dec_rate = raw_session.rate/obj.fs;
-                if ~sl.numbers.isIntegerValue(dec_rate)
+                if ~daq2.sl.numbers.isIntegerValue(dec_rate)
                     %TODO: Clean this up, add detail
                    error('Resultant decimation rates are not all integers')  
                 end
@@ -66,7 +66,7 @@ classdef analog_input
             end
             
             [ch,idx] = raw_session.addAnalogInput(device_id_local,...
-                obj.daq_port,meas_type_local,other);
+                obj.daq_port,meas_type_local,other,dec_rate);
             
             chan = daq2.channel.analog_input_channel(ch,idx,fs_local,dec_rate,obj);
         end

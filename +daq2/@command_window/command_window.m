@@ -10,7 +10,8 @@ classdef command_window < handle
     %   Improvements
     %   -------------
     %   1) error notification event
-    %   2) Support for old and new text boxes
+    %   2) Support for old and new text boxes - currently only new
+    %      is supported
     %   3) Optional throwing of an error
     
     events

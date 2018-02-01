@@ -128,14 +128,23 @@ classdef data_writer < handle
             obj.saveData('trial_status','incomplete');
         end
         function resolveBasePath(obj)
-            
+            %
+            %   Resolves folder for saving data. Updates property: 
+            %       'base_save_path'
+            %
+            %   Use bath path from options if present:
+            %       options.base_save_path
+            %
+            %   If not present, save in daq2 package based on date:
+            %       daq2_repo_root/data/<yymmdd>/
+            %
             obj.base_save_path = obj.options.base_save_path;
             if isempty(obj.base_save_path)
-                temp = sl.stack.getPackageRoot();
+                temp = daq2.sl.stack.getPackageRoot();
                 id = datestr(now,'yymmdd');
                 obj.base_save_path = fullfile(temp,'data',id);
             end
-            sl.dir.createFolderIfNoExist(obj.base_save_path);
+            daq2.sl.dir.createFolderIfNoExist(obj.base_save_path);
         end
         function file_path = getFilePath(obj,trial_id,prefix,suffix)
             %

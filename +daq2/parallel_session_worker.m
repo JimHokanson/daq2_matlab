@@ -4,6 +4,7 @@ function parallel_session_worker(type,q_send)
 %
 %   See Also
 %   --------
+%   daq2.session
 %   daq2.parallel_raw_session
 %   daq2.utils.initDAQInfo
 %   daq2.output.null_stim
@@ -38,6 +39,8 @@ try
     n_loops = 0;
     n_pauses = 0;
     loop_I = 0;
+    data_available_L = [];
+    dec_rates = [];
     
     %When we overflow on this amount, we reset
     %back to 1 rather than reallocating the loop variable
@@ -55,8 +58,7 @@ try
     log = daq2.parallel.parallel_session_log;
     
     session = daq.createSession(type);
-    session.addlistener('DataAvailable',...
-        @(src,event)h__dataAvailable(event,q_send,log));
+
     session.addlistener('ErrorOccurred',...
         @(src,event)h__errorTriggered(event,q_send));
     
@@ -69,16 +71,21 @@ try
         h_tic = tic;
         
         if is_running && n_analog_outputs && (session.ScansQueued < session.NotifyWhenScansQueuedBelow)
+            %Adding data to output queue
+            %---------------------------
             data = stim.getData();
             if ~isempty(data)
                 session.queueOutputData(data);
             end
             loop_type = 1;
+            
         elseif q_recv.QueueLength > 0
+            %Processing commands from main process
+            %-------------------------------------
             s = q_recv.poll();
             
             %Generic ...
-            loop_type = 2;
+            loop_type = 2; %#ok<NASGU>
             
             switch s.cmd
                 %Keep this first since it should be the most often
@@ -106,15 +113,21 @@ try
                     %   .id - device id
                     %   .port - daq_port
                     %   .type - measurement type
-                    %   .other - prop/value pairs
+                    %   .other - cell or prop/value pairs
+                    %   .dec_rate - decimation rate for this channel
                     
                     [ch,idx] = session.addAnalogInputChannel(s.id,s.port,s.type);
                     
+                    %Application of other properties
+                    %------------------------------
                     for i = 1:2:length(s.other)
                         prop = s.other{i};
                         value = s.other{i+1};
                         ch.(prop) = value;
                     end
+                    
+                    dec_rates = [dec_rates s.dec_rate]; %#ok<AGROW>
+                    
                     n_analog_inputs = n_analog_inputs + 1;
                     
                     %----------------------------------------------------------
@@ -206,11 +219,24 @@ try
                     %----------------------------------------------------------
                 case 'start'
                     loop_type = 4;
-                    %- no fields besides cmd
+                    %- no fields besides the command ('cmd')
+                    
+                    %Initialize stimulator
+                    %---------------------------------------
+                    %TODO: How does the stimulator know if it needs to 
+                    %output samples or not?
                     data = stim.init();
                     if ~isempty(data)
                         session.queueOutputData(data);
                     end
+                    
+
+                    dec_handler = daq2.input.decimation_handler(dec_rates);
+                    
+                    %obj = daq2.input.decimation_handler(decimation_rates)
+                    data_available_L = session.addlistener('DataAvailable',...
+                        @(src,event)h__dataAvailable(event,q_send,log,dec_handler));
+                    
                     session.startBackground();
                     is_running = true;
                     
@@ -220,6 +246,12 @@ try
                     %- no fields besides cmd
                     is_running = false;
                     session.stop();
+                    
+                    if ~isempty(data_available_L)
+                       delete(data_available_L);
+                       data_available_L = [];
+                    end
+                    
                     %----------------------------------------------------------
                 case 'update_daq_prop'
                     loop_type = 2.09;
@@ -284,17 +316,19 @@ s.Channels = [];
 s.Connections = [];
 end
 
-function h__dataAvailable(data,q_send,log)
+function h__dataAvailable(cb_struct,q_send,log,dec_handler)
 %
 %   Inputs
 %   ------
 %   log : daq2.parallel.parallel_session_log
-%
+%   dec_handler : daq2.input.decimation_handler
 
 %We need a try/catch because otherwise errors
 %are silent in the listener
 
-%   data:
+%Format of callback
+%--------------------------------------
+%   cb_struct:
 %     TriggerTime: 7.3705e+05
 %            Data: [1000×10 double]
 %      TimeStamps: [1000×1 double]
@@ -302,28 +336,33 @@ function h__dataAvailable(data,q_send,log)
 %       EventName: 'DataAvailable'
 
 
+
 try
+    %Process -----------------------
     h_tic = tic;
     s = struct;
     s.cmd = 'data_available';
     s.src = [];
     
-    %TODO: Implement decimation here to avoid
-    %transmission overhead ...
-    
     %Can't write to Source in data
     %so we copy it ...
-    s2 = struct;
-    s2.Data = data.Data;
-    s2.TimeStamps = data.TimeStamps;
-    s2.Source = [];
-    s2.EventName = data.EventName;
-    s2.TriggerTime = data.TriggerTime;
+%     s2 = struct;
+%     s2.Data = cb_struct.Data;
+%     s2.TimeStamps = cb_struct.TimeStamps;
+%     s2.Source = [];
+%     s2.EventName = cb_struct.EventName;
+%     s2.TriggerTime = cb_struct.TriggerTime;
+
+    %Only transfering minimum now
+    
+    s2.decimated_data = dec_handler.getDecimatedData(cb_struct.Data);
+    %anything else????
 
     s.data = s2;
     
     log.addProcessTime(toc(h_tic));
     
+    %Send -----------------------
     h_tic = tic;
     h__send(q_send,s)
     log.addSendTime(toc(h_tic));

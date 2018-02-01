@@ -106,7 +106,7 @@ classdef acquired_data < handle
             %   
                  
             in.h_fig = [];
-            in = sl.in.processVarargin(in,varargin);
+            in = daq2.sl.in.processVarargin(in,varargin);
             
             if isempty(in.h_fig) || ~isvalid(in.h_fig)
                 f = figure;

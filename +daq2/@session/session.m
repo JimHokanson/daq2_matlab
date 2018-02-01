@@ -3,7 +3,12 @@ classdef session < handle
     %   Class:
     %   daq2.session
     %
-    %   This is the main class for the daq2 package
+    %   This is the main class for the daq2 package.
+    %
+    %   Conceptually this class holds 3 main things:
+    %   1) raw_session - the actual interface to the DAQ
+    %   2) input_data_handler - code that handles acquiring data
+    %   3) output_data_handler - code that handles outputing data
     
     properties
         raw_session             %daq2.raw_session OR daq2.parallel_raw_session
@@ -15,12 +20,18 @@ classdef session < handle
         parallel_session_enabled %logical
         
         cmd_window  %Default: daq2.command_window
-        %Interface:
+        %Interface: (This is likely out of date)
         %   logMessage(string,formatting_varargin)
         %   logError(string,formmatting_varargin)
+        
+        %Requires seperate library:
+        %   https://github.com/JimHokanson/interactive_matlab_plot
+        %
         iplot %interactive_plot
         
         %TODO: Expose via set method
+        %
+        %TODO: Might want to make this a listenable event
         error_cb
         %This can be set by the user. It gets called when
         %a daq error occurs ...
@@ -48,18 +59,25 @@ classdef session < handle
             %
             %   obj = daq2.session(type)
             %
-            %   s = daq2.session('ni');
-            %
             %   Optional Inputs
             %   ---------------
-            %   command_window : like daq2.command_window
-            %       See daq2.command_window for the necessary method
-            %       interfaces.
+            %   All options are described in:
+            %       daq2.session.session_options
+            %
+            %   Examples
+            %   --------
+            %   s = daq2.session('ni');
+            %
+            %   options = daq2.session.session_options;
+            %   options.use_parallel = true;
+            %   s = daq2.session('ni',options);
+            %
+            %   s = daq2.session('ni','use_parallel,true);
             
             MAX_HW_STARTUP_TIME = 15;
             
             in = daq2.session.session_options();
-            in = sl.in.processVarargin(in,varargin);
+            in = daq2.sl.in.processVarargin(in,varargin);
             options = in;
             obj.options = options;
             
@@ -156,7 +174,7 @@ classdef session < handle
             in.trial_id = [];
             in.save_suffix = '';
             in.save_prefix = '';
-            in = sl.in.processVarargin(in,varargin);
+            in = daq2.sl.in.processVarargin(in,varargin);
             
             obj.input_data_handler.initForStart(in.trial_id,in.save_prefix,in.save_suffix);
             obj.output_data_handler.initForStart();
@@ -166,13 +184,17 @@ classdef session < handle
         end
         function stop(obj)
             %TODO: Ignore if not running ...
-            %- if we abort, then stop, don't run stop
+
             obj.iplot = [];
             obj.raw_session.stop();
             obj.output_data_handler.stop();
             obj.input_data_handler.stop();
         end
         function abort(obj,ME)
+            %
+            %   Stops the DAQ but with additional logic to indicate
+            %   that the trial ended in error.
+            
             obj.iplot = [];
             obj.cmd_window.logErrorMessage(ME.message);
             %I don't think we need to stop the DAQ if the DAQ is throwing

@@ -64,8 +64,10 @@ classdef parallel_raw_session < handle
         
         chan_types
         
-        %Format src,event
+        %Format src,event  - this may be out of date
         read_cb
+        
+        write_cb
         %The user function to call 
         d2 = '--------- DAQ Parameters--------'
     end
@@ -342,8 +344,7 @@ classdef parallel_raw_session < handle
                     %
                     %   .data - struct
                     try
-                        %   TriggerTime would be useful for ascertaining t
-                        %   = 0
+                        %   TriggerTime would be useful for ascertaining t = 0
                         if ~isempty(obj.data_available_cb)
                             src = [];
                             obj.data_available_cb(src,s.data);
@@ -384,7 +385,7 @@ classdef parallel_raw_session < handle
                 case 'struct'
                     obj.p_daq_struct = s.data;
                 otherwise
-                    errro('Internal code error, missing command: %s',s.cmd);
+                    error('Internal code error, missing command: %s',s.cmd);
             end
         end
         %==================================================================
@@ -423,6 +424,10 @@ classdef parallel_raw_session < handle
             %       - daq2.channel.spec.analog_input
             %       - daq2.channel.spec.analog_output
             %
+            %   See Also
+            %   --------
+            %   addAnalogInput
+            %   addAnalogOutput
             
             if ~iscell(chan_specs)
                 chan_specs = num2cell(chan_specs);
@@ -481,10 +486,20 @@ classdef parallel_raw_session < handle
     
     %Meant to be accessed via: addChannelsBySpec -=========================
     methods (Hidden)
-        function [ch,idx] = addAnalogInput(obj,dev_id,daq_port,meas_type,other)
+        function [ch,idx] = addAnalogInput(obj,dev_id,daq_port,meas_type,other,dec_rate)
             %
             %
+            %   Outputs are not currently populated.
             %   
+            %   Outputs
+            %   -------
+            %   ch : []
+            %   idx : []
+            %
+            %   See Also
+            %   --------
+            %   daq2.channel.spec.analog_input
+            
             ch = [];
             idx = [];
             
@@ -494,6 +509,7 @@ classdef parallel_raw_session < handle
             s.port = daq_port;
             s.type = meas_type;
             s.other = other;
+            s.dec_rate = dec_rate;
             
             h__send(obj,s)
         end

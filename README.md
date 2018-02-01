@@ -12,7 +12,11 @@ This code:
 2) Parallel Computing Toolbox
 3) https://github.com/JimHokanson/interactive_matlab_plot
 4) https://github.com/JimHokanson/plotBig_Matlab
-5) (this one will be removed soon) https://github.com/JimHokanson/matlab_standard_library
+
+Any calls that start with "sl." are in error. Code for those functions is located at:
+https://github.com/JimHokanson/matlab_standard_library
+
+Any such code should be moved locally to /+daq2/+sl/...
 
 # Examples
 
