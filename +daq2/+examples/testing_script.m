@@ -2,9 +2,19 @@ function session = testing_script
 %
 %   session = daq2.examples.testing_script
 
+%{
+session = daq2.examples.testing_script
+session.stop()
+
+%}
+
 %options = daq2.session.session_options
 
-session = daq2.session('ni','use_parallel',false);
+%Currently a bug for false
+USE_PARALLEL = true;
+RATE = 10000;
+
+session = daq2.session('ni','use_parallel',USE_PARALLEL);
 
 %-----------------------------------------------------
 c1 = @h__createAnalogChan;
@@ -37,7 +47,7 @@ specs = {s.stim_mon s.stim_select s.pres1 s.pres2 s.pres3 ...
 
 % session : daq2.session
 raw_session = session.raw_session;
-raw_session.rate = 10000;
+raw_session.rate = RATE;
 raw_session.is_continuous = true;
 %Specifies at what point to put in more output samples ...
 raw_session.write_cb_time = 0.2;
@@ -46,7 +56,24 @@ raw_session.write_cb = @(~,~)session.queueOutputData;
         
 session.addChannelsBySpec(specs);
         
-session.queueOutputData();
+%Stimulator initialization
+%-------------------------------------------------------------
+%I'd like to simplify this
+pulse_width_us = 200;
+waveform = daq2.basic_stimulator.getBiphasicWaveform(RATE,pulse_width_us); 
+stim_fcn = @daq2.basic_stimulator;
+
+s = struct;
+s.default_time_growth = 0.5;
+s.params = struct;
+s.params.waveform = waveform;
+s.params.amp = 0;
+DEFAULT_RATE = 10;
+s.params.rate = DEFAULT_RATE;
+session.addStimulator(stim_fcn,s);
+
+
+%session.queueOutputData();
 session.startBackground();
 
 end
