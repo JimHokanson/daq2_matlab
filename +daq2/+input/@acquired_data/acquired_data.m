@@ -103,15 +103,16 @@ classdef acquired_data < handle
             %
             %   Optional Inputs
             %   ---------------
-            %   
+            %   h_fig
                  
             in.h_fig = [];
+            in.position = [];
             in = daq2.sl.in.processVarargin(in,varargin);
             
             if isempty(in.h_fig) || ~isvalid(in.h_fig)
                 f = figure;
                 %Only position if it didn't exist
-                set(f,'Position',[1 1 1200 800]);
+                set(f,'Position',in.position);
             else
                 f = in.h_fig;
                 clf

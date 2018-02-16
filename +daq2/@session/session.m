@@ -230,16 +230,45 @@ classdef session < handle
         end
         function iplot = plotDAQData(obj,varargin)
             %
+            %   iplot = plotDAQData(obj,varargin)
+            %
             %   Launch Interactive Plot
+            %
+            %   Optional Inputs
+            %   ---------------
+            %   h_fig : figure handle or []
+            %       If not empty the plot takes over the specified figure
+            %       handle. This currently is mainly for figure positioning
+            %       and for avoiding multiple figures from being open when 
+            %       not closing a previous figure.
+            %   position : 4-element vector
+            %       [left-boundary bottom-boundary width height]
+            %       This can be used to set the resulting figure position.
+            %
+            %   Outputs
+            %   -------
+            %   iplot : interactive_plot
+            %       Instance from an interactive_plot class from repo:
+            %       https://github.com/JimHokanson/interactive_matlab_plot
+            %
+            %   The resulting figure can be retrieved by calling:
+            %       iplot.getFigureHandle()
+            %       
+            %   Example
+            %   -------
+            %   plot(1:100)
+            %   s.plotDAQData('h_fig',gcf);
             %
             %   See Also
             %   --------
-            %   daq2.input.acquired_data>plotDAQData
+            %   daq2.input_data_handler.plotDAQData
             
             iplot = obj.input_data_handler.plotDAQData(varargin{:});
             
             %TODO: I don't think we want to hang onto this here (only in
             %the input_data_handler class)
+            %
+            %   This would require changes to addComment below ...
             obj.iplot = iplot;
         end
     end
@@ -247,6 +276,13 @@ classdef session < handle
     %Data Logging and Retrieval ===========================================
     methods
         function addComment(obj,comment_string)
+            %
+            %   addComment(obj,comment_string)
+            %
+            %   Inputs
+            %   ------
+            %   comment_string
+            
            %1) Add comment locally - NYI (need addNonDaqData)
            %2) Add comment to plot (if open)
            current_time = obj.raw_session.getElapsedSessonTime();

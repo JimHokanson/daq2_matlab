@@ -102,12 +102,11 @@ classdef input_data_handler < handle
         end
         function iplot = plotDAQData(obj,varargin)
             %
-            %
             %   iplot = plotDAQData(obj,varargin)
             %
             %   See Also
             %   --------
-            %   daq2.input.acquired_data>plotDAQData
+            %   daq2.input.acquired_data.plotDAQData
             
             if ~obj.daq_recording
                 obj.cmd_window.logErrorMessage(...
