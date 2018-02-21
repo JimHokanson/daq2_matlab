@@ -16,7 +16,7 @@ classdef parallel_raw_session < handle
     %   daq2.parallel_session_worker
     
     properties
-        d0 = '------- Internal Props -------'
+        d0 = '------- Internal Props - Don''t Modify -------'
         session_type
         perf_mon        %daq2.perf_monitor
         command_window  %Default: daq2.command_window
@@ -38,10 +38,11 @@ classdef parallel_raw_session < handle
         %This is our local copy of all the daq props ...
         
      	read_mode = 'auto'
-        
+        %This should not be updated
         %- auto
         %- time
         %- samples
+        
         write_mode = 'auto'
         
         %Values set by the user ...

@@ -10,6 +10,15 @@ function parallel_session_worker(type,q_send)
 %   daq2.output.null_stim
 %   daq2.basic_stimulator
 %   
+%   Improvements
+%   ------------
+%   1) Place updating of output buffer into a callback rather than
+%      polling (i.e. specify output listener, DataRequired??)
+%   2) Place command handling into a callback rather than polling
+%   
+%   If we implement #s 1 and 2, then we just need to have a loop with a
+%   pause statement - assuming both #s 1 and 2 are able to execute during
+%   the pause ...
 %
 %   TODO: Move decimation to here ...
 
@@ -38,14 +47,19 @@ try
     n_analog_outputs = 0;
     n_loops = 0;
     n_pauses = 0;
-    loop_I = 0;
+    
     data_available_L = [];
     dec_rates = [];
     
     %When we overflow on this amount, we reset
     %back to 1 rather than reallocating the loop variable
     N_LOOP = 1e5;
+    
+    %loop_I wraps every N_LOOP
+    loop_I = 0;
+    %Elapsed time for loop execution
     loop_etimes = zeros(1,N_LOOP);
+    %Command that was executed at every loop
     loop_types = zeros(1,N_LOOP);
     loop_is_full = false;
     output_min_time = 0; %#ok<NASGU>

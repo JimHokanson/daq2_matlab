@@ -129,10 +129,34 @@ classdef session < handle
             %
             %   Inputs
             %   ------
+            %   chan_specs
+            %
+            %   See Also
+            %   --------
+            %   chan_specs : cell array or instance of
+            %       - daq2.channel.spec.analog_input
+            %       - daq2.channel.spec.analog_output
+            %
+            %   Example
+            %   -------
+            %   chans = cell(1,2);
+            %   chans{1} = daq2.channel.spec.analog_input
+            %   chans{2} = daq2.channel.spec.analog_output('stim_out','ao0')
+            %
+            %   See Also
+            %   --------
+            %   daq2.parallel_raw_session
+            %   daq2.channel.spec.analog_input
+            %   daq2.channel.spec.analog_output
+            
+            %daq2.parallel_raw_session
+            %daq2.raw_session
             obj.raw_session.addChannelsBySpec(chan_specs);
         end
         function addStimulator(obj,stim_fcn,s)
             %
+            %   This method is only for the parallel session. The local
+            %   session would be handled via a write callback.
             %
             %   Examples
             %   --------
@@ -140,14 +164,21 @@ classdef session < handle
             %   pulse_width_us = 200;
             %   waveform = daq2.basic_stimulator.getBiphasicWaveform(fs,pulse_width_us)
             %   stim_fcn = @daq2.basic_stimulator
+            %
             %   s = struct;
-            %   %Add 0.5 seconds of data every time we run
+            %   %Add 0.5 seconds of data every time we need more data
             %   s.default_time_growth = 0.5;
-            %   s.params = struct;
-            %   s.params.waveform = waveform;
-            %   s.params.amp = 0;
-            %   s.params.rate = 1;
+            %   params = struct;
+            %   params.waveform = waveform;
+            %   params.amp = 0;
+            %   params.rate = 1;
+            %   s.params = params;
+            %
             %   session.addStimulator(stim_fcn,s);
+            %
+            %   See Also
+            %   --------
+            %   daq2.parallel_output_data_handler.addStimulator
             
             obj.output_data_handler.addStimulator(stim_fcn,s)
         end
@@ -375,7 +406,7 @@ end
 %------------------------------------------------------
 current_pool = gcp('nocreate');
 if isempty(current_pool)
-    obj.cmd_window.logMessage('Staring parallel pool for daq2 code')
+    obj.cmd_window.logMessage('Starting parallel pool for daq2 code')
     current_pool = gcp;
     obj.cmd_window.logMessage('Parallel pool initialized')
 end

@@ -3,7 +3,12 @@ classdef analog_input
     %   Class:
     %   daq2.channel.spec.analog_input
     %
-    %   These are rather unpolished
+    %   A spec functions as structure for defining a particular channel. It
+    %   can be "sent" to the daq to create the specified channel.
+    %
+    %   This class is rather unpolished ...
+    %
+    %   There might be additional properties that I haven't exposed yet ...
     
     properties
         fs %-1 is max
@@ -13,7 +18,8 @@ classdef analog_input
         device_id = ''
         measurement_type = ''
         
-        range
+        range  %scalar or [min max]
+        %
         
         uncalibrated_default_ylim
         calibrated_default_ylim
@@ -28,7 +34,11 @@ classdef analog_input
             %We may change this later ...
             obj.name = short_name; 
         end
+    end
+    methods (Hidden)
         function chan = addToDAQ(obj,raw_session,available_devices)
+            %
+            %   This is meant to be called by the raw session ...
             
             if isempty(obj.device_id)
                 device_id_local = available_devices(1).ID;

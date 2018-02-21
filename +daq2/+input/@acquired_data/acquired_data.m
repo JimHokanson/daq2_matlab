@@ -103,7 +103,11 @@ classdef acquired_data < handle
             %
             %   Optional Inputs
             %   ---------------
-            %   h_fig
+            %   h_fig :
+            %   position : 
+            %
+            %   See Also
+            %   --------
                  
             in.h_fig = [];
             in.position = [];

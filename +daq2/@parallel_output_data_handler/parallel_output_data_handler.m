@@ -29,11 +29,29 @@ classdef parallel_output_data_handler < handle
             %Nothing needed
         end
     end
+    
     %Stim control methods =================================================
     methods
         %These calls only work with the parallel_raw_session, not the 
         %standard raw_session class
        	function addStimulator(obj,stim_fcn,params)
+            %
+            %   Inputs
+            %   ------
+            %   stim_fcn : function handle
+            %       A function handle to create a stimulator. This can be
+            %       user created or a stimulator defined by this code.
+            %       I still need to document the stimulator interface ...
+            %       The local stimulator is:
+            %       daq2.basic_stimulator
+            %   params : struct
+            %       
+            %   See Also
+            %   --------
+            %   daq2.parallel_raw_session
+            %   daq2.parallel_session_worker
+            %   daq2.basic_stimulator
+            
             obj.raw_session.addStimulator(stim_fcn,params);
         end
         function queueMoreData(obj,n_seconds_add)

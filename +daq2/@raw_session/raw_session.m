@@ -3,7 +3,10 @@ classdef raw_session < handle
     %   Class:
     %   daq2.raw_session
     %
-    %   This class is meant to be the direct interface to the daq.
+    %   This class is meant to be the direct interface to the daq. It runs
+    %   in the main process unlike daq2.parallel_raw_session. It is
+    %   currently out of date as most new development has been on the
+    %   parallel session.
     %
     %   See Also
     %   --------
