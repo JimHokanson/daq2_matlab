@@ -32,10 +32,30 @@ classdef parallel_raw_session < handle
         h_tic_work_send
         
         p_daq_struct %Gets set with struct when requested ...
-        p_perf
+        %See requestSessionStruct()
+        
+        p_perf %structure that gets populated with performance information
+        %when requested.
+        %See summarizePerfomance()
         
         daq_props %struct
         %This is our local copy of all the daq props ...
+        
+        %Read/Write Rate Settings
+        %--------------------------------------------------
+        %These properties allow us to specify read and write
+        %times as either samples (default) or as times (somthing I think
+        %is more useful). This however requires keeping track of what
+        %we're doing so that if the rate changes we can update 
+        %the wait times appropriately.
+        %
+        %Example of previous bug:
+        %- User: Set read to every 0.5 seconds
+        %- Internally set read to approprate # of samples based on rate
+        %- User: Change rate
+        %- Internally, # of samples no longer reflects 0.5 seconds
+        %
+        %See: https://github.com/JimHokanson/daq2_matlab/issues/1
         
      	read_mode = 'auto'
         %This should not be updated
@@ -54,8 +74,20 @@ classdef parallel_raw_session < handle
         %IsNotifyWhenDataAvailableExceedsAuto
         %NotifyWhenScansQueuedBelow
         %IsNotifyWhenScansQueuedBelowAuto
+        %--------------------------------------------------
+        
+        n_errors_thrown = 0 %NOT YET IMPLEMENTED
+        %This is a work in progress. I had downloaded a corrupt mex file
+        %and I couldn't quit. I think what we want is:
+        %1) Display error info for the first error
+        %2) After so many errors (like 100, just stop the session)
+        %       The # should be an optional input
+        %
+        %https://github.com/JimHokanson/daq2_matlab/issues/7
         
         h_start_tic
+        %Used to monitor elapsed time. Gets set when the background process
+        %starts. This time is currently only approximate to the start time.
     end
     
     properties
@@ -70,7 +102,7 @@ classdef parallel_raw_session < handle
         
         write_cb
         %The user function to call 
-        d2 = '--------- DAQ Parameters--------'
+        d2 = '----- Modifiable DAQ Parameters ------'
     end
 
     properties (Dependent)
@@ -352,6 +384,9 @@ classdef parallel_raw_session < handle
                         end
                     catch ME
                         assignin('base','last_ME_from_cb3',ME);
+                        %TODO: This needs to be improved
+                        %See issue #7
+                        %disp(ME)
                         fprintf(2,'An error occurred, see "last_ME_from_cb3" in the base workspace\n');
                         obj.command_window.logErrorMessage('Code error in daq2.parallel_raw_session');
                     end
