@@ -390,7 +390,7 @@ try
     s = struct;
     s.cmd = 'daq_error';
     s.ME = data.Error;
-    h__send(q,s)
+    h__send(q_send,s)
 catch ME
     h__sendError(q_send,ME)
 end
