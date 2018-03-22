@@ -24,7 +24,7 @@ classdef session < handle
         %   logMessage(string,formatting_varargin)
         %   logError(string,formmatting_varargin)
         
-        %Requires seperate library:
+        %Requires separate library:
         %   https://github.com/JimHokanson/interactive_matlab_plot
         %
         iplot %interactive_plot
@@ -45,6 +45,8 @@ classdef session < handle
         rate
     end
     
+    %Dependent Methods
+    %----------------------------------------------------------------------
     methods
         function value = get.rate(obj)
             value = obj.raw_session.rate;
@@ -54,6 +56,8 @@ classdef session < handle
         end
     end
     
+    %Constructor
+    %----------------------------------------------------------------------
     methods
         function obj = session(type,varargin)
             %
@@ -103,6 +107,8 @@ classdef session < handle
                     type,obj.perf_monitor,obj.cmd_window);
             end
             
+            obj.perf_monitor.linkObjects(obj.raw_session);
+            
             %Input/Output Handlers
             %------------------------------------------------------
             obj.input_data_handler = daq2.input_data_handler(...
@@ -123,7 +129,8 @@ classdef session < handle
         end
     end
     
-    %Setup Methods  =======================================================
+    %Setup Methods
+    %----------------------------------------------------------------------
     methods
         function addChannelsBySpec(obj,chan_specs)
             %
@@ -190,7 +197,8 @@ classdef session < handle
         end
     end
     
-    %Control Methods ======================================================
+    %Control Methods
+    %----------------------------------------------------------------------
     methods
         function startBackground(obj,varargin)
             %
@@ -244,7 +252,8 @@ classdef session < handle
         end
     end
     
-    %Plot methods =========================================================
+    %Plot methods
+    %----------------------------------------------------------------------
     methods
         function loadCalibrations(obj,file_paths,varargin)
             %
@@ -332,6 +341,12 @@ classdef session < handle
            end
         end
         function xy_data = getXYData(obj,name)
+            %
+            %   xy_data = getXYData(obj,name)
+            %
+            %   Output
+            %   ------
+            %   xy_data : 
             xy_data = obj.input_data_handler.getXYData(name);
         end
         function saveData(obj,name,data)
@@ -444,27 +459,31 @@ if current_pool.NumWorkers < n_workers_needed
     error('Invalid # of workers in parallel pool')
 end
 
-running_futures = current_pool.FevalQueue.RunningFutures;
-if ~isempty(running_futures)
+%Added 1 and 2 for running_futures so that I could look at the change ...
+running_futures1 = current_pool.FevalQueue.RunningFutures;
+if ~isempty(running_futures1)
     %Stop any that are related to this code ...
     %
     %Note this means we can't run two sessions at once
-    fcn_handles = {running_futures.Function};
+    fcn_handles = {running_futures1.Function};
     fcn_strings = cellfun(@(x) func2str(x),fcn_handles,'un',0);
     
     mask = ismember(fcn_strings,...
         {'daq2.input.parallel_data_writer_worker',...
         'daq2.parallel_session_worker'});
-    for i = 1:length(running_futures)
+    for i = 1:length(running_futures1)
         if mask(i)
-            cancel(running_futures(i));
+            cancel(running_futures1(i));
         end
     end
     
     %After possibly stopping some, check if we are ok
-    running_futures = current_pool.FevalQueue.RunningFutures;
-    n_free = current_pool.NumWorkers - length(running_futures);
+    running_futures2 = current_pool.FevalQueue.RunningFutures;
+    n_free = current_pool.NumWorkers - length(running_futures2);
     if n_free < n_workers_needed
+        fprintf(2,'N workers needed: %d\n',n_workers_needed);
+        fprintf(2,'N workers free: %d\n',n_free);
+        fprintf(2,'-----------------------------------------\n');
         error('Invalid # of FREE workers in parallel pool')
     end
 end

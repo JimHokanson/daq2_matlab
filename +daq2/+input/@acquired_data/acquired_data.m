@@ -25,7 +25,7 @@ classdef acquired_data < handle
         daq_entries %struct
         %objects are field in the struct
         
-        daq_entries_array %array of objects
+        daq_entries_array %[big_plot.streaming_data]
         
         n_chans
         non_daq_entries %fields of type ... NYI
@@ -145,6 +145,13 @@ classdef acquired_data < handle
 %             obj.non_daq_entries.(name) = rec_data_entry;
 %         end
         function xy_obj = getXYData(obj,name)
+            %
+            %   xy_obj = getXYData(obj,name)
+            %
+            %   Output
+            %   ------
+            %   xy_obj : daq2.data.non_daq_streaming_xy
+            
             if isfield(obj.non_daq_xy_entries,name)
                xy_obj = obj.non_daq_xy_entries.(name);
             else
@@ -181,6 +188,7 @@ classdef acquired_data < handle
             %       New data should be decimated already.
             
             for i = 1:obj.n_chans
+                %entry is object: big_plot.streaming_data
                 obj.daq_entries_array(i).addData(new_data{i});
             end
         end

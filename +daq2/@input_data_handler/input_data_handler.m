@@ -22,7 +22,7 @@ classdef input_data_handler < handle
     properties
         is_parallel
         raw_session  %daq2.raw_session OR daq2.parallel_raw_session
-        perf_monitor
+        perf_monitor %daq2.perf_monitor
         cmd_window
         options         %daq2.session.session_options
         
@@ -47,6 +47,8 @@ classdef input_data_handler < handle
         b
     end
     
+    %Constructors
+    %----------------------------------------------------
     methods
         function obj = input_data_handler(is_parallel,raw_session,...
                 perf_monitor,cmd_window,options)
@@ -70,26 +72,38 @@ classdef input_data_handler < handle
             %
             %   initForStart(obj,trial_id,save_prefix,save_suffix)
             %
+            %   Called to initialize the class for another DAQ trial.
+            %
+            %   Full: daq2.input_data_handler.initForStart
+            %
             %   Inputs
             %   -------------
             %   trial_id :
             %   save_prefix :
             %   save_suffix :
             %
+            %   See Also
+            %   --------
+            %   daq2.input.acquired_data
+            %   daq2.input.data_writer
+            
+            obj.perf_monitor.resetRead();
             
             if ~obj.is_parallel
                 error('Not yet implemented')
-%                  obj.raw_session = raw_session;
-%             obj.perf_monitor = perf_monitor;
-%             
-%             ai_chans = raw_session.getAnalogInputChans();
-            
+                %                  obj.raw_session = raw_session;
+                %             obj.perf_monitor = perf_monitor;
+                %
+                %             ai_chans = raw_session.getAnalogInputChans();
+                
                 obj.decimation_handler = daq2.input.decimation_handler(...
                     obj.raw_session,obj.perf_monitor);
             end
             
+            
             obj.acquired_data = daq2.input.acquired_data(...
                 obj.raw_session,obj.perf_monitor,obj.cmd_window,obj.options);
+            
             obj.data_writer = daq2.input.data_writer(...
                 obj.raw_session,obj.perf_monitor,obj.cmd_window,obj.options,...
                 trial_id,save_prefix,save_suffix);
@@ -100,6 +114,12 @@ classdef input_data_handler < handle
             obj.read_cb = obj.raw_session.read_cb;
             obj.daq_recording = true;
         end
+    end
+    
+    %User Interfaces
+    %----------------------------------------------------------------------
+    %Note, I've tried to expose all of these in the session
+    methods
         function iplot = plotDAQData(obj,varargin)
             %
             %   iplot = plotDAQData(obj,varargin)
@@ -120,11 +140,13 @@ classdef input_data_handler < handle
             
             %When the session updates (like comments being added)
             %then save the session data to disk
-            obj.iplot_listen = addlistener(iplot.eventz,'session_updated',@obj.sessionUpdated);
+            obj.iplot_listen = ...
+                addlistener(iplot.eventz,'session_updated',@obj.sessionUpdated);
         end
         function sessionUpdated(obj,source,event_data)  %#ok<INUSD>
             %
             
+            %see interactive_plot.session
             s = obj.iplot.getSessionData;
             obj.saveData('iplot_session_data',s);
         end
@@ -150,6 +172,13 @@ classdef input_data_handler < handle
             error('Not yet implemented')
         end
         function xy_data = getXYData(obj,name)
+            %
+            %   xy_data = getXYData(obj,name)
+            %
+            %   Output
+            %   ------
+            %   xy_data : daq2.data.non_daq_streaming_xy
+            
             if ~obj.daq_recording
                 obj.cmd_window.logErrorMessage(...
                     'Unable to get non-daq xy data when not recording')
@@ -171,31 +200,35 @@ classdef input_data_handler < handle
             obj.data_writer.addSamples(sprintf('%s__y',name),y_data);
         end
     end
+    
     methods
         function abort(obj,ME)
             obj.daq_recording = false;
             delete(obj.iplot_listen);
             obj.iplot = [];
-            obj.data_writer.closerWriterWithError(ME);
             obj.acquired_data = [];
+            obj.data_writer.closerWriterWithError(ME);
             obj.data_writer = [];
         end
         function stop(obj)
             obj.daq_recording = false;
             delete(obj.iplot_listen);
             obj.iplot = [];
-            obj.data_writer.closeWriter();
             obj.acquired_data = [];
+            obj.data_writer.closeWriter();
             obj.data_writer = [];
         end
     end
     methods
         function loadCalibrations(obj,file_paths,varargin)
-             if isempty(obj.iplot) || ~isvalid(obj.iplot)
+            %
+            %   loadCalibrations(obj,file_paths,varargin)
+            
+            if isempty(obj.iplot) || ~isvalid(obj.iplot)
                 obj.cmd_window.logErrorMessage(...
                     'Unable to load calibrations when iplot is not open')
                 return
-             end
+            end
             obj.iplot.loadCalibrations(file_paths,varargin{:});
             temp = obj.iplot.getCalibrationsSummary();
             obj.m = temp.m;
@@ -203,26 +236,29 @@ classdef input_data_handler < handle
         end
         function data = getAverageData(obj,varargin)
             %
-            %   TODO: Finish documenting function ...
+            %   data = getAverageData(obj,varargin)
             %
             %   Currently only returns the average from the last
-            %   acquisition period
+            %   acquisition period.
             %
             %   Optional Inputs
             %   ---------------
             %   channel : ''
-            %   as_vector : default true 
+            %   as_vector : default true
             %       If false returns as a struct where fields
             %       are the channels.
             %   x_range : NYI
             %   seconds_back : NYI
-            %   
+            %
             %
             %   Examples
             %   ---------
             %   obj.getAverageData('channel','my_chan')
             %   obj.getAverageData('as_vector',false)
             %
+            %   See Also
+            %   --------
+            %   daq2.session.
             
             in.seconds_back = []; %NYI
             in.x_range = []; %NYI
@@ -230,7 +266,9 @@ classdef input_data_handler < handle
             in.as_vector = true;
             in = daq2.sl.in.processVarargin(in,varargin);
             
+            %This gets computed during the read callback
             avg_local = obj.avg_data;
+            
             if ~isempty(in.channel)
                 short_names = obj.acquired_data.short_names;
                 I = find(strcmp(short_names,in.channel),1);
@@ -254,17 +292,36 @@ classdef input_data_handler < handle
         end
         function readDataCallback(obj,source,event)
             %
-            %   source: Matlab daq session
-            %   event:
-            %       TriggerTime: 7.3705e+05
-            %            Data: [1000×10 double]
-            %      TimeStamps: [1000×1 double]
-            %          Source: [1×1 daq.ni.Session]
-            %       EventName: 'DataAvailable'
+            %   JAH TODO: I don't think these inputs are accurate
             %
+            %   Inputs
+            %   ------
+            %   Non-Parallel -------------------
+            %       source: Matlab daq session
+            %        event:
+            %           TriggerTime: 7.3705e+05
+            %                  Data: [1000×10 double]
+            %            TimeStamps: [1000×1 double]
+            %                Source: [1×1 daq.ni.Session]
+            %             EventName: 'DataAvailable'
+            %
+            %   Parallel Case -------------------
+            %
+            %
+            %   See Also
+            %   --------
+            %
+            
+            
+            %Notes
+            %------------
+            %Who forces a redraw?
+            %   when the window changes we automatically get a redraw
             
             %TODO: Log performance
             try
+                
+                obj.perf_monitor.logReadStart();
                 
                 if obj.is_parallel
                     decimated_data = event.decimated_data;
@@ -272,19 +329,36 @@ classdef input_data_handler < handle
                     %Format
                     %- matrix [n_samples_acquired x n_channels]
                     input_data = event.Data;
-
+                    
                     %decimated_data is a cell array of arrays
                     decimated_data = obj.decimation_handler.getDecimatedData(input_data);
                 end
-
+                
+                
+                %Store average data of last collected set of data
+                %--------------------------------------------------
                 obj.avg_data = cellfun(@mean,decimated_data);
                 %Calibrate averages
                 obj.avg_data = obj.avg_data.*obj.m + obj.b;
-
+                
+                
+                %Send to acquisition for memory storage
+                %--------------------------------------------
+                %daq2.input.acquired_data.addDAQData
                 obj.acquired_data.addDAQData(decimated_data);
+                
+                
+                %Save data to disk
+                %-----------------------------------------
+                %This is driving up laptop cpu usage by 20%
+                %daq2.input.data_writer.addDAQSamples
+                %fprintf(2,'Saving data\n');
                 obj.data_writer.addDAQSamples(decimated_data);
-
-                %TODO: On figure close send out notify event
+                
+                %Note, adding data doesn't force xlimits to change.
+                %This needs to be done separately.
+                
+%                 %TODO: On figure close send out notify event
                 try
                     if ~isempty(obj.iplot) && isvalid(obj.iplot)
                         obj.iplot.dataAdded(obj.acquired_data.daq_tmax,obj.avg_data);
@@ -296,10 +370,16 @@ classdef input_data_handler < handle
                        rethrow(ME)
                    end
                 end
-
+                
+                obj.perf_monitor.logReadInternalEnd();
+                
+                %Execute read cb if needed
+                %Ideally we would do listeners ...
                 if ~isempty(obj.read_cb)
                     obj.read_cb(source,event);
                 end
+                
+                obj.perf_monitor.logReadExternalEnd();
             catch ME
                 if obj.daq_recording
                     rethrow(ME)

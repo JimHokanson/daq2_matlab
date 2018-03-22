@@ -588,6 +588,12 @@ classdef parallel_raw_session < handle
            output = toc(obj.h_start_tic);
         end
         function ai_chans = getAnalogInputChans(obj)
+            %
+            %   Note, this should return the analog input channels
+            %   in the order in which they are collected. Not doing so is
+            %   an error although currently it returns channels in the
+            %   order in which they were created.
+            
             temp = obj.chans(obj.chan_types == 1);
             ai_chans = [temp{:}];
         end
@@ -632,11 +638,29 @@ classdef parallel_raw_session < handle
         function summarizePerfomance(obj)
            obj.p_perf = [];
            obj.requestPerformanceStruct();
+           
            pause(3);
            if isempty(obj.p_perf)
                error('Code not yet implemented to handle long delay in struct retrieval')
            end
            p = obj.p_perf;
+           
+           %daq2.parallel_session_worker
+           
+%             p.n_pauses = n_pauses;
+%                     p.n_loops = n_loops;
+%                     p.loop_etimes = loop_etimes;
+%                     p.loop_types = loop_types;
+%                     p.loop_I = loop_I;
+%                     p.loop_is_full = loop_is_full;
+%                     p.read_data_process_times = log.etimes_process;
+%                     p.read_data_send_times = log.etimes_send;
+%                     p.read_data_process_I = log.I1;
+%                     p.read_data_send_I = log.I2;
+           
+            %TODO: Redo by grouping types and showing histograms by type
+            %as well as labeling with counts
+
            figure
            I = p.loop_I;
            ax(1) = subplot(4,1,1);

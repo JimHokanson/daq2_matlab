@@ -1,4 +1,5 @@
-function parallel_data_writer_worker(q_send,h_matfile)
+%function parallel_data_writer_worker(q_send,h_matfile)
+function parallel_data_writer_worker(q_send,file_path)
 %
 %   daq2.input.parallel_data_writer_worker(q_send,h_matfile)
 %
@@ -17,6 +18,8 @@ function parallel_data_writer_worker(q_send,h_matfile)
 %.end_I : end index
 
 %matlab.io.MatFile
+
+h_matfile = matlab.io.MatFile(file_path);
 
 q_recv = parallel.pool.PollableDataQueue;
 q_send.send(q_recv);
