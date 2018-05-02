@@ -1,7 +1,7 @@
-classdef saved_data_explorer
+classdef saved_data
     %
     %   Class:
-    %   daq2.saved_data_explorer
+    %   daq2.saved_data
     %
     %   Not yet implemented
     %
@@ -21,10 +21,7 @@ classdef saved_data_explorer
     %       - may include comments & calibrations
     %   - everything else is optional that has been added by the user
     %
-    %   TODO:
-    %   ------
-    %   I think I want to rename this class to saved_data
-    
+
     properties (Hidden)
         h
         analog_daq_names
@@ -58,9 +55,9 @@ classdef saved_data_explorer
     end
     
     methods
-        function obj = saved_data_explorer(file_path)
+        function obj = saved_data(file_path)
             %   
-            %   obj = daq2.saved_data_explorer(file_path)
+            %   obj = daq2.saved_data(file_path)
             %
             
             obj.file_path = file_path;
@@ -101,8 +98,8 @@ classdef saved_data_explorer
             ANALOG_INPUT = 1;
             I = find(s.chan_types == ANALOG_INPUT);
             n_chans = length(I);
-            temp = cell(1,n_chans);
-            temp2 = cell(1,n_chans);
+            temp = cell(n_chans,1);
+            temp2 = cell(n_chans,1);
             for i = 1:n_chans
                 chan_spec = s.chans{I(i)};
                 temp{i} = ['daq__' chan_spec.short_name];

@@ -43,8 +43,8 @@ if nargin == 0
     base_path = pathname;
 end
 
-f = daq2.saved_data_explorer(file_path);
+f = daq2.saved_data(file_path);
 
-keyboard
+%TODO: A plot command should go here ...
 
 end
