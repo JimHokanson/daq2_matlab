@@ -367,6 +367,8 @@ classdef session < handle
             %   Does 2 things:
             %   1) Saves the data to disk
             %   2) Keeps it in memory for later use and retrieval
+            
+            %daq2.input_data_handler
             obj.input_data_handler.addNonDaqXYData(name,y_data,x_data);
         end
         function queueOutputData(obj,data)

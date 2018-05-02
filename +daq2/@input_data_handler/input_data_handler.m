@@ -196,6 +196,8 @@ classdef input_data_handler < handle
             
             %This would be better as a 2 column variable ...
             %- would need to update data writer ...
+            
+            %daq2.input.data_writer
             obj.data_writer.addSamples(sprintf('%s__x',name),x_data);
             obj.data_writer.addSamples(sprintf('%s__y',name),y_data);
         end
