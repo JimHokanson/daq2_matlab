@@ -20,16 +20,41 @@ classdef saved_data_explorer
     %   iplot_session_data (optional) 
     %       - may include comments & calibrations
     %   - everything else is optional that has been added by the user
+    %
+    %   TODO:
+    %   ------
+    %   I think I want to rename this class to saved_data
     
     properties (Hidden)
         h
+        analog_daq_names
     end
     
     properties
+        file_path
        trial_status
        user_data %struct
-       daq_session
-       analog_inputs
+       %Anything that is specified by the user goes in this struct. These
+       %fields are created by calls to save user data functions
+       
+       daq_session %struct
+       % 
+       %    Contains options and channel specs
+       
+    %Example, may be out of date
+    %------------------------------
+    %                     VERSION: 1
+    %          STRUCT_DATE: 737072.414046933
+    %                 TYPE: 'daq2.parallel_raw_session'
+    %                chans: {1×11 cell}
+    %           chan_types: [1×11 double]
+    %                 rate: 10000
+    %         read_cb_time: 0.33
+    %      read_cb_samples: 3300
+    %        write_cb_time: 0.4
+    %     write_cb_samples: 4000
+       
+       analog_channel_names
     end
     
     methods
@@ -38,6 +63,7 @@ classdef saved_data_explorer
             %   obj = daq2.saved_data_explorer(file_path)
             %
             
+            obj.file_path = file_path;
             obj.h = matfile(file_path);
             
             obj.trial_status = obj.h.trial_status;
@@ -71,15 +97,21 @@ classdef saved_data_explorer
             
             %Extracting daq data
             %-------------------------------------------
-            keyboard
             s = obj.daq_session;
             ANALOG_INPUT = 1;
             I = find(s.chan_types == ANALOG_INPUT);
             n_chans = length(I);
             temp = cell(1,n_chans);
+            temp2 = cell(1,n_chans);
             for i = 1:n_chans
                 chan_spec = s.chans{I(i)};
+                temp{i} = ['daq__' chan_spec.short_name];
+                temp2{i} = chan_spec.name; 
             end
+            obj.analog_daq_names = temp;
+            obj.analog_channel_names = temp2;
+        end
+        function plotInteractive(obj)
             
         end
     end
